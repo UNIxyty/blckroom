@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { z } from "zod";
 
 /**
@@ -29,8 +31,25 @@ export type AppConfig = z.infer<typeof envSchema>;
 
 let cached: AppConfig | undefined;
 
+/** Walk up from cwd looking for a .env (repo root when run from an app dir). */
+function loadDotEnv(): void {
+  let dir = process.cwd();
+  for (let i = 0; i < 5; i++) {
+    const candidate = join(dir, ".env");
+    if (existsSync(candidate)) {
+      // Does not override variables already set in the real environment.
+      process.loadEnvFile(candidate);
+      return;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) return;
+    dir = parent;
+  }
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   if (cached) return cached;
+  if (env === process.env) loadDotEnv();
   const parsed = envSchema.safeParse(env);
   if (!parsed.success) {
     const lines = parsed.error.issues
