@@ -29,7 +29,12 @@ export async function getDefaultShop(): Promise<ShopRow> {
 
 export async function updateShopSettings(
   id: string,
-  patch: { name?: string; currency?: string; retention_hours?: number; monthly_budget_cents?: number },
+  patch: {
+    name?: string | undefined;
+    currency?: string | undefined;
+    retention_hours?: number | undefined;
+    monthly_budget_cents?: number | undefined;
+  },
 ): Promise<ShopRow | null> {
   const { rows } = await getPool().query<ShopRow>(
     `update shops set

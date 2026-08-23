@@ -67,6 +67,59 @@ export async function listBarberSessions(barberId: string, days: number): Promis
   return rows;
 }
 
+/** Every Storage path a session owns (source, raw, framed, sheet). */
+export async function listSessionImagePaths(sessionId: string): Promise<string[]> {
+  const { rows } = await getPool().query<{ path: string }>(
+    `select source_image_path as path from sessions where id = $1 and source_image_path is not null
+     union all
+     select sheet_image_path from sessions where id = $1 and sheet_image_path is not null
+     union all
+     select raw_image_path from generations where session_id = $1 and raw_image_path is not null
+     union all
+     select framed_image_path from generations where session_id = $1 and framed_image_path is not null`,
+    [sessionId],
+  );
+  return rows.map((r) => r.path);
+}
+
+/** Null all image paths and mark expired; the row survives for stats. */
+export async function stripSessionImagery(sessionId: string): Promise<void> {
+  const pool = getPool();
+  await pool.query(
+    `update generations set raw_image_path = null, framed_image_path = null
+     where session_id = $1`,
+    [sessionId],
+  );
+  await pool.query(
+    `update sessions set source_image_path = null, sheet_image_path = null, status = 'expired'
+     where id = $1`,
+    [sessionId],
+  );
+}
+
+/** Sessions past expiry that still hold imagery. */
+export async function listExpiredSessionsWithImagery(limit = 50): Promise<SessionRow[]> {
+  const { rows } = await getPool().query<SessionRow>(
+    `select * from sessions
+     where expires_at < now() and status <> 'expired'
+        and (source_image_path is not null or sheet_image_path is not null
+             or exists (select 1 from generations g
+                        where g.session_id = sessions.id
+                          and (g.raw_image_path is not null or g.framed_image_path is not null)))
+     limit $1`,
+    [limit],
+  );
+  return rows;
+}
+
+export async function listBarberSessionIds(barberId: string): Promise<string[]> {
+  const { rows } = await getPool().query<{ id: string }>(
+    "select id from sessions where barber_id = $1 and status <> 'expired'",
+    [barberId],
+  );
+  return rows.map((r) => r.id);
+}
+
 export async function countBarberSessionsToday(
   barberId: string,
   timezone: string,
