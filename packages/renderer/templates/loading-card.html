@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BLACK ROOM — loading card</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Archivo:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;padding:0;background:#0B0D0C;}
+  .artboard{
+    width:1080px;height:1350px;box-sizing:border-box;
+    background:#0B0D0C;color:#F2F3F1;position:relative;overflow:hidden;
+    font-family:'Archivo',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;
+  }
+  .inset{position:absolute;inset:20px;border:1px solid #232927;}
+  .pad{position:absolute;inset:0;padding:0 28px;box-sizing:border-box;display:flex;flex-direction:column;}
+  .topbar{height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;box-sizing:border-box;}
+  .mark{font-family:'Cormorant Garamond',Georgia,serif;font-weight:300;font-size:19px;letter-spacing:.42em;text-transform:uppercase;}
+  .meta-top{font-size:13px;letter-spacing:.24em;text-transform:uppercase;color:#6E7573;}
+
+  .skel{width:1024px;height:1024px;flex:0 0 1024px;position:relative;background:#101312;overflow:hidden;}
+  .skel:before{content:"";position:absolute;inset:0;
+    background:linear-gradient(100deg,rgba(242,243,241,0) 38%,rgba(242,243,241,.055) 50%,rgba(242,243,241,0) 62%);
+    background-size:260% 100%;background-repeat:no-repeat;
+    animation:shimmer 3.4s ease-in-out infinite;}
+  @keyframes shimmer{0%{background-position:-140% 0}100%{background-position:240% 0}}
+  .cross{position:absolute;inset:0;}
+  .cross i{position:absolute;background:#1A1E1D;}
+  .cross i.h{left:0;right:0;height:1px;top:50%;}
+  .cross i.v{top:0;bottom:0;width:1px;left:50%;}
+  .waitlabel{position:absolute;left:0;right:0;top:calc(50% + 28px);text-align:center;
+    font-family:ui-monospace,'SFMono-Regular',Menlo,monospace;font-size:13px;letter-spacing:.3em;
+    text-transform:uppercase;color:#4A5150;}
+
+  .info{flex:1;display:flex;flex-direction:column;padding:30px 20px 0;box-sizing:border-box;}
+  .barName{height:34px;width:52%;background:#141817;position:relative;overflow:hidden;}
+  .barName:before,.barMeta:before{content:"";position:absolute;inset:0;
+    background:linear-gradient(100deg,rgba(242,243,241,0) 38%,rgba(242,243,241,.06) 50%,rgba(242,243,241,0) 62%);
+    background-size:260% 100%;background-repeat:no-repeat;animation:shimmer 3.4s ease-in-out infinite;}
+  .cut{font-family:'Cormorant Garamond',Georgia,serif;font-weight:300;font-size:56px;line-height:1;letter-spacing:.14em;text-transform:uppercase;margin:0;color:#2E3432;}
+  .row{display:flex;justify-content:space-between;align-items:center;margin-top:18px;}
+  .barMeta{height:15px;width:150px;background:#141817;position:relative;overflow:hidden;}
+  .barMeta.p{width:96px;height:18px;}
+  .rule{height:1px;background:#232927;margin-top:20px;}
+  .foot{margin-top:20px;display:flex;justify-content:center;opacity:.55;}
+</style>
+</head>
+<body>
+<div class="artboard">
+  <div class="inset"></div>
+  <div class="pad">
+    <div class="topbar">
+      <div class="mark">Black Room</div>
+      <div class="meta-top">{{barber_name}} &nbsp;·&nbsp; {{date}}</div>
+    </div>
+
+    <div class="skel">
+      <div class="cross"><i class="h"></i><i class="v"></i></div>
+      <div class="waitlabel">Generating</div>
+    </div>
+
+    <div class="info">
+      <h1 class="cut">{{cut_name}}</h1>
+      <div class="row">
+        <div class="barMeta"></div>
+        <div class="barMeta p"></div>
+      </div>
+      <div class="rule"></div>
+      <div class="foot">
+        <svg width="56" height="56" viewBox="0 0 100 100" aria-label="BR emblem">
+          <circle cx="50" cy="50" r="48" fill="none" stroke="#3A403E" stroke-width="1"/>
+          <circle cx="50" cy="50" r="41" fill="none" stroke="#6E7573" stroke-width="2.5" stroke-dasharray="5 4.2"/>
+          <circle cx="50" cy="50" r="35" fill="none" stroke="#3A403E" stroke-width="1"/>
+          <text x="50" y="50" text-anchor="middle" dominant-baseline="central"
+                font-family="Cormorant Garamond, Georgia, serif" font-weight="300"
+                font-size="30" letter-spacing="2" fill="#F2F3F1">BR</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

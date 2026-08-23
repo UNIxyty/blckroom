@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BLACK ROOM — single cut card</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Archivo:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;padding:0;background:#0B0D0C;}
+  .artboard{
+    width:1080px;height:1350px;box-sizing:border-box;
+    background:#0B0D0C;color:#F2F3F1;position:relative;overflow:hidden;
+    font-family:'Archivo',Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* LED motif: hairline inset border */
+  .inset{position:absolute;inset:20px;border:1px solid #232927;}
+  .pad{position:absolute;inset:0;padding:0 28px;box-sizing:border-box;display:flex;flex-direction:column;}
+
+  .topbar{height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;box-sizing:border-box;}
+  .mark{font-family:'Cormorant Garamond',Georgia,serif;font-weight:300;font-size:19px;letter-spacing:.42em;text-transform:uppercase;color:#F2F3F1;}
+  .meta-top{font-size:13px;letter-spacing:.24em;text-transform:uppercase;color:#6E7573;}
+
+  .slot{width:1024px;height:1024px;flex:0 0 1024px;position:relative;background:#101312;overflow:hidden;}
+  .slot .img{position:absolute;inset:0;background-image:url('{{image_url}}');background-size:cover;background-position:center;}
+  .slot .stripe{position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,#0E1110 0 8px,#131716 8px 16px);}
+  .slot .tok{position:absolute;left:0;right:0;bottom:24px;text-align:center;font-family:ui-monospace,'SFMono-Regular',Menlo,monospace;font-size:13px;letter-spacing:.12em;color:#4A5150;}
+
+  .info{flex:1;display:flex;flex-direction:column;justify-content:flex-start;padding:30px 20px 0;box-sizing:border-box;}
+  .cut{font-family:'Cormorant Garamond',Georgia,serif;font-weight:300;font-size:56px;line-height:1;letter-spacing:.14em;text-transform:uppercase;margin:0;}
+  .row{display:flex;justify-content:space-between;align-items:baseline;margin-top:16px;}
+  .dur{font-size:15px;letter-spacing:.26em;text-transform:uppercase;color:#A8AEAB;}
+  .price{font-size:22px;font-weight:500;letter-spacing:.16em;color:#F2F3F1;}
+  .rule{height:1px;background:#232927;margin-top:20px;}
+  .foot{margin-top:20px;display:flex;justify-content:center;}
+</style>
+</head>
+<body>
+<div class="artboard">
+  <div class="inset"></div>
+  <div class="pad">
+    <div class="topbar">
+      <div class="mark">Black Room</div>
+      <div class="meta-top">{{barber_name}} &nbsp;·&nbsp; {{date}}</div>
+    </div>
+
+    <div class="slot">
+      <div class="stripe"></div>
+      <div class="tok">{{image_url}}</div>
+      <div class="img"></div>
+    </div>
+
+    <div class="info">
+      <h1 class="cut">{{cut_name}}</h1>
+      <div class="row">
+        <div class="dur">{{duration}}</div>
+        <div class="price">{{price}}</div>
+      </div>
+      <div class="rule"></div>
+      <div class="foot">
+        <svg width="56" height="56" viewBox="0 0 100 100" aria-label="BR emblem">
+          <circle cx="50" cy="50" r="48" fill="none" stroke="#3A403E" stroke-width="1"/>
+          <circle cx="50" cy="50" r="41" fill="none" stroke="#6E7573" stroke-width="2.5" stroke-dasharray="5 4.2" stroke-linecap="butt"/>
+          <circle cx="50" cy="50" r="35" fill="none" stroke="#3A403E" stroke-width="1"/>
+          <text x="50" y="50" text-anchor="middle" dominant-baseline="central"
+                font-family="Cormorant Garamond, Georgia, serif" font-weight="300"
+                font-size="30" letter-spacing="2" fill="#F2F3F1">BR</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
