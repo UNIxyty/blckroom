@@ -1,5 +1,6 @@
 # Playwright base image ships headless Chromium + system deps.
-FROM mcr.microsoft.com/playwright:v1.50.0-noble AS base
+# Keep this version in lockstep with the playwright version in pnpm-lock.yaml.
+FROM mcr.microsoft.com/playwright:v1.62.1-noble AS base
 RUN corepack enable
 WORKDIR /app
 
