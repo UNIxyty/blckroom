@@ -2,17 +2,21 @@ import Fastify from "fastify";
 import { webhookCallback } from "grammy";
 import { loadConfig } from "@blackroom/shared/config";
 import { createBot } from "./bot.js";
+import { createStorage } from "@blackroom/shared/storage";
 import { registerAuthRoutes, makeAuthenticate } from "./api/auth.js";
 import { registerMeRoutes } from "./api/me.js";
+import { registerSessionRoutes } from "./api/sessions.js";
 
 const config = loadConfig();
 
 const app = Fastify({ logger: true });
 const bot = createBot(config);
 const authenticate = makeAuthenticate(config);
+const storage = createStorage(config);
 
 registerAuthRoutes(app, config);
 registerMeRoutes(app, authenticate);
+registerSessionRoutes(app, config, storage, authenticate);
 
 app.get("/health", async () => ({
   ok: true,

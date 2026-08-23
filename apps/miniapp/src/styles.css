@@ -199,6 +199,33 @@ select:focus {
   text-transform: uppercase;
 }
 
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.row2 {
+  display: flex;
+  gap: 8px;
+}
+
+.row2 .btn {
+  flex: 1;
+}
+
+.consent-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gen-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
 /* ---- capture ---- */
 .capture-stage {
   position: relative;
