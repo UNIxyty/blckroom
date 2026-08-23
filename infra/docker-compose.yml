@@ -1,0 +1,39 @@
+services:
+  bot:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.bot
+    env_file: ../.env
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.worker
+    env_file: ../.env
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  miniapp:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.miniapp
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+  # Cloudflare tunnel: run `cloudflared` on the host or add a service here with
+  # your tunnel token. See README for `setWebhook` + tunnel setup.

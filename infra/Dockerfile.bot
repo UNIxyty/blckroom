@@ -1,0 +1,15 @@
+FROM node:22-slim AS base
+RUN corepack enable
+WORKDIR /app
+
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* ./
+COPY apps/bot/package.json apps/bot/
+COPY packages/shared/package.json packages/shared/
+RUN pnpm install --frozen-lockfile --filter @blackroom/bot... || pnpm install --filter @blackroom/bot...
+
+COPY tsconfig.base.json ./
+COPY packages/shared packages/shared
+COPY apps/bot apps/bot
+
+EXPOSE 3000
+CMD ["pnpm", "--filter", "@blackroom/bot", "start"]

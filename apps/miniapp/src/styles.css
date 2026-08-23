@@ -1,0 +1,51 @@
+/* Palette imported from the BLACK ROOM frame system spec. */
+:root {
+  --wall-black: #0b0d0c;
+  --slot: #101312;
+  --hairline: #1a1e1d;
+  --inset-rule: #232927;
+  --emblem-ring: #3a403e;
+  --tertiary: #6e7573;
+  --concrete: #a8aeab;
+  --primary: #f2f3f1;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--wall-black);
+  color: var(--primary);
+  font-family: "Archivo", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.wordmark {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 300;
+  font-size: 28px;
+  letter-spacing: 0.5em;
+  text-indent: 0.5em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.sub {
+  font-size: 12px;
+  letter-spacing: 0.62em;
+  text-indent: 0.62em;
+  text-transform: uppercase;
+  color: var(--concrete);
+  margin: 0;
+}

@@ -1,0 +1,19 @@
+{
+  "name": "blackroom",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@11.23.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "dev:bot": "pnpm --filter @blackroom/bot dev",
+    "dev:worker": "pnpm --filter @blackroom/worker dev",
+    "dev:miniapp": "pnpm --filter @blackroom/miniapp dev",
+    "db:migrate": "pnpm --filter @blackroom/db migrate",
+    "db:seed": "pnpm --filter @blackroom/db seed",
+    "render:sample": "pnpm --filter @blackroom/renderer sample"
+  }
+}

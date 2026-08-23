@@ -1,0 +1,16 @@
+# Playwright base image ships headless Chromium + system deps.
+FROM mcr.microsoft.com/playwright:v1.50.0-noble AS base
+RUN corepack enable
+WORKDIR /app
+
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* ./
+COPY apps/worker/package.json apps/worker/
+COPY packages/shared/package.json packages/shared/
+RUN pnpm install --frozen-lockfile --filter @blackroom/worker... || pnpm install --filter @blackroom/worker...
+
+COPY tsconfig.base.json ./
+COPY packages/shared packages/shared
+COPY apps/worker apps/worker
+
+EXPOSE 3001
+CMD ["pnpm", "--filter", "@blackroom/worker", "start"]
