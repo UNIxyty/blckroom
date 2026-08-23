@@ -9,6 +9,7 @@ import {
   setSessionStatus,
   listBarberSessions,
   countBarberSessionsToday,
+  listSessionGenerations,
   getShop,
   monthlyUsage,
   audit,
@@ -132,7 +133,7 @@ export function registerSessionRoutes(
     if (!session || (session.barber_id !== req.user.id && req.user.role === "barber")) {
       return reply.code(404).send({ error: "not found" });
     }
-    return serializeSession(session, storage);
+    return serializeSession(session, storage, { withGenerations: true });
   });
 
   /** Own history, default last 7 days. */
@@ -166,15 +167,35 @@ export async function serializeSession(
     cost_cents: number;
   },
   storage: Storage,
+  options: { withGenerations?: boolean } = {},
 ): Promise<Record<string, unknown>> {
-  const sheetUrl = session.sheet_image_path
-    ? await storage
-        .createSignedUrl(
-          session.sheet_image_path,
-          Math.max(60, Math.floor((session.expires_at.getTime() - Date.now()) / 1000)),
-        )
-        .catch(() => null)
-    : null;
+  const expired = session.expires_at.getTime() < Date.now();
+  const sheetUrl =
+    session.sheet_image_path && !expired
+      ? await storage
+          .createSignedUrl(
+            session.sheet_image_path,
+            Math.max(60, Math.floor((session.expires_at.getTime() - Date.now()) / 1000)),
+          )
+          .catch(() => null)
+      : null;
+
+  let generations: unknown[] | undefined;
+  if (options.withGenerations) {
+    const rows = await listSessionGenerations(session.id);
+    generations = await Promise.all(
+      rows.map(async (g) => ({
+        id: g.id,
+        haircut_name: g.name_en,
+        status: g.status,
+        framed_url:
+          g.framed_image_path && !expired
+            ? await storage.createSignedUrl(g.framed_image_path, 600).catch(() => null)
+            : null,
+      })),
+    );
+  }
+
   return {
     id: session.id,
     status: session.status,
@@ -182,5 +203,6 @@ export async function serializeSession(
     expires_at: session.expires_at,
     sheet_url: sheetUrl,
     cost_cents: session.cost_cents,
+    ...(generations ? { generations } : {}),
   };
 }

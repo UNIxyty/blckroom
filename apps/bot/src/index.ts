@@ -6,6 +6,7 @@ import { createStorage } from "@blackroom/shared/storage";
 import { registerAuthRoutes, makeAuthenticate } from "./api/auth.js";
 import { registerMeRoutes } from "./api/me.js";
 import { registerSessionRoutes } from "./api/sessions.js";
+import { registerGenerateRoutes } from "./api/generate.js";
 
 const config = loadConfig();
 
@@ -17,6 +18,7 @@ const storage = createStorage(config);
 registerAuthRoutes(app, config);
 registerMeRoutes(app, authenticate);
 registerSessionRoutes(app, config, storage, authenticate);
+registerGenerateRoutes(app, config, storage, bot.api, authenticate);
 
 app.get("/health", async () => ({
   ok: true,

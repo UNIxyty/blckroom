@@ -10,12 +10,18 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
+    "@blackroom/db": "workspace:*",
+    "@blackroom/renderer": "workspace:*",
     "@blackroom/shared": "workspace:*",
     "fastify": "^5.2.0",
+    "grammy": "^1.45.1",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.35.3",
     "tsx": "^4.19.0"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
+    "@types/qrcode": "^1.5.6",
     "typescript": "^5.7.0"
   }
 }

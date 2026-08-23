@@ -72,12 +72,27 @@ importers:
 
   apps/worker:
     dependencies:
+      '@blackroom/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@blackroom/renderer':
+        specifier: workspace:*
+        version: link:../../packages/renderer
       '@blackroom/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       fastify:
         specifier: ^5.2.0
         version: 5.12.1
+      grammy:
+        specifier: ^1.45.1
+        version: 1.45.1
+      qrcode:
+        specifier: ^1.5.4
+        version: 1.5.4
+      sharp:
+        specifier: ^0.35.3
+        version: 0.35.3(@types/node@22.20.1)
       tsx:
         specifier: ^4.19.0
         version: 4.23.12
@@ -85,6 +100,9 @@ importers:
       '@types/node':
         specifier: ^22.20.1
         version: 22.20.1
+      '@types/qrcode':
+        specifier: ^1.5.6
+        version: 1.5.6
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
