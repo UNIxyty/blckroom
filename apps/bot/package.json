@@ -10,6 +10,7 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
+    "@blackroom/db": "workspace:*",
     "@blackroom/shared": "workspace:*",
     "fastify": "^5.2.0",
     "grammy": "^1.34.0",

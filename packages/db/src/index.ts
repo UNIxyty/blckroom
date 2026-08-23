@@ -1,2 +1,4 @@
 export { getPool, closePool } from "./client.js";
-// Typed query modules (users, sessions, jobs, …) land with the features that use them.
+export * from "./users.js";
+export * from "./shops.js";
+export * from "./audit.js";
