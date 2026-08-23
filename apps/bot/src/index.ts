@@ -12,9 +12,9 @@ import { registerAdminRoutes } from "./api/admin.js";
 const config = loadConfig();
 
 const app = Fastify({ logger: true });
-const bot = createBot(config);
-const authenticate = makeAuthenticate(config);
 const storage = createStorage(config);
+const bot = createBot(config, storage);
+const authenticate = makeAuthenticate(config);
 
 registerAuthRoutes(app, config);
 registerMeRoutes(app, authenticate);

@@ -1,5 +1,6 @@
 import { Bot, InlineKeyboard, type Context } from "grammy";
 import type { AppConfig } from "@blackroom/shared/config";
+import type { Storage } from "@blackroom/shared/storage";
 import {
   upsertPendingUser,
   findUserByTelegramId,
@@ -9,6 +10,9 @@ import {
   listApprovers,
   getDefaultShop,
   monthlyUsage,
+  listBarberSessionIds,
+  listSessionImagePaths,
+  stripSessionImagery,
   audit,
   type UserRow,
 } from "@blackroom/db";
@@ -21,7 +25,7 @@ function displayName(u: UserRow): string {
   return u.first_name ?? (u.username ? `@${u.username}` : `#${u.telegram_id}`);
 }
 
-export function createBot(config: AppConfig): Bot<BotContext> {
+export function createBot(config: AppConfig, storage: Storage): Bot<BotContext> {
   const bot = new Bot<BotContext>(config.TELEGRAM_BOT_TOKEN);
 
   // Resolve telegram_id → user row once per update.
@@ -167,6 +171,29 @@ export function createBot(config: AppConfig): Bot<BotContext> {
         "/delete_my_data — remove all imagery from your sessions",
         ...(owner ? ["/stats — sessions and spend this month", "/users — manage users"] : []),
       ].join("\n"),
+    );
+  });
+
+  gated.command("delete_my_data", async (ctx) => {
+    const user = ctx.dbUser!;
+    const sessionIds = await listBarberSessionIds(user.id);
+    let removed = 0;
+    for (const id of sessionIds) {
+      const paths = await listSessionImagePaths(id);
+      await storage.remove(paths).catch(() => {});
+      await stripSessionImagery(id);
+      removed += paths.length;
+    }
+    await audit({
+      shopId: user.shop_id,
+      actorUserId: user.id,
+      action: "user.delete_my_data",
+      meta: { sessions: sessionIds.length, images: removed },
+    });
+    await ctx.reply(
+      sessionIds.length === 0
+        ? "Nothing to delete — you have no sessions with stored imagery."
+        : `Deleted ${removed} images from ${sessionIds.length} of your sessions.`,
     );
   });
 
