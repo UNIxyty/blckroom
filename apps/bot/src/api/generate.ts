@@ -9,6 +9,11 @@ import {
   setSessionDelivery,
   listActiveHaircuts,
   createGenerations,
+  getGenerationWithCut,
+  resetGeneration,
+  hasActiveGenerateJob,
+  getShop,
+  monthlyUsage,
   enqueueJob,
   audit,
 } from "@blackroom/db";
@@ -77,6 +82,58 @@ export function registerGenerateRoutes(
     });
 
     return { ok: true, count: generations.length };
+  });
+
+  /**
+   * §4: per-tile retry. Resets a failed generation and enqueues a fresh
+   * generate job; if the sheet was already composed, the settle path
+   * re-composes and re-delivers it once the retry lands.
+   */
+  app.post("/api/generations/:id/retry", { preHandler: barberUp }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const generation = await getGenerationWithCut(id);
+    if (!generation) return reply.code(404).send({ error: "not found" });
+
+    const session = await getSession(generation.session_id);
+    if (!session || (session.barber_id !== req.user.id && req.user.role === "barber")) {
+      return reply.code(404).send({ error: "not found" });
+    }
+    if (session.expires_at.getTime() < Date.now() || session.status === "expired") {
+      return reply.code(410).send({ error: "session expired" });
+    }
+    if (generation.status !== "failed") {
+      return reply.code(409).send({ error: `generation is ${generation.status}` });
+    }
+    if (await hasActiveGenerateJob(generation.id)) {
+      return { ok: true, already: true };
+    }
+
+    // A retry spends money — the monthly budget still applies.
+    const shop = await getShop(session.shop_id);
+    if (shop) {
+      const usage = await monthlyUsage(shop.id);
+      if (usage.spend_cents >= shop.monthly_budget_cents) {
+        return reply.code(429).send({
+          error: "The shop's monthly generation budget is used up.",
+        });
+      }
+    }
+
+    const reset = await resetGeneration(generation.id);
+    if (!reset) return reply.code(409).send({ error: "already retried" });
+    await setSessionStatus(session.id, "generating");
+    await enqueueJob("generate", {
+      generation_id: generation.id,
+      session_id: session.id,
+    });
+    await audit({
+      shopId: session.shop_id,
+      actorUserId: req.user.id,
+      action: "generation.retry",
+      targetType: "generation",
+      targetId: generation.id,
+    });
+    return { ok: true };
   });
 
   /**

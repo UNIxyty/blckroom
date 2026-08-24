@@ -88,6 +88,29 @@ export async function markGenerationDone(
   );
 }
 
+/** Reset a failed generation so a fresh generate job can pick it up. */
+export async function resetGeneration(id: string): Promise<GenerationRow | null> {
+  const { rows } = await getPool().query<GenerationRow>(
+    `update generations
+       set status = 'queued', error = null, completed_at = null
+     where id = $1 and status = 'failed'
+     returning *`,
+    [id],
+  );
+  return rows[0] ?? null;
+}
+
+/** Is there already a live generate job for this generation? */
+export async function hasActiveGenerateJob(generationId: string): Promise<boolean> {
+  const { rows } = await getPool().query<{ n: string }>(
+    `select count(*) as n from jobs
+     where type = 'generate' and status in ('queued', 'running')
+       and payload->>'generation_id' = $1`,
+    [generationId],
+  );
+  return Number(rows[0]!.n) > 0;
+}
+
 export async function markGenerationFailed(id: string, error: string): Promise<void> {
   await getPool().query(
     `update generations set status = 'failed', error = $2, completed_at = now()

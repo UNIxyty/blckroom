@@ -65,6 +65,8 @@ export async function generateHaircutImage(
     };
 
     if (json.promptFeedback?.blockReason) {
+      // Prompt-level block is deterministic — retrying the identical request
+      // cannot help. Permanent.
       throw new Error(`gemini blocked: ${json.promptFeedback.blockReason}`);
     }
     const parts = json.candidates?.[0]?.content?.parts ?? [];
@@ -77,11 +79,14 @@ export async function generateHaircutImage(
         };
       }
     }
+    // No image in a 200 response (finishReason IMAGE_OTHER & friends).
+    // Diagnosed live as NON-deterministic — the same request typically
+    // succeeds on retry — so treat it like any transient failure.
     const text = parts.find((p) => p.text)?.text?.slice(0, 300);
-    throw new Error(
-      `gemini returned no image (finish: ${json.candidates?.[0]?.finishReason ?? "?"}) ${text ?? ""}`,
-    );
+    lastError = `gemini returned no image (finish: ${json.candidates?.[0]?.finishReason ?? "?"}) ${text ?? ""}`;
+    await backoff(attempt);
   }
+  // "gemini transient" prefix routes this into the job queue's retry path.
   throw new Error(`gemini transient failure after ${MAX_TRIES} tries: ${lastError}`);
 }
 
