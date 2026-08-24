@@ -4,9 +4,11 @@ WORKDIR /app
 
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* ./
 COPY apps/miniapp/package.json apps/miniapp/
-RUN pnpm install --frozen-lockfile --filter @blackroom/miniapp... || pnpm install --filter @blackroom/miniapp...
+COPY packages/shared/package.json packages/shared/
+RUN pnpm install --frozen-lockfile --filter @blackroom/miniapp... --filter @blackroom/shared...
 
 COPY tsconfig.base.json ./
+COPY packages/shared packages/shared
 COPY apps/miniapp apps/miniapp
 RUN pnpm --filter @blackroom/miniapp build
 

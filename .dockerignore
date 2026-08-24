@@ -1,0 +1,8 @@
+# Never ship local installs into images — pnpm installs inside the build.
+node_modules
+**/node_modules
+**/dist
+**/out
+.git
+.env
+.env.*
