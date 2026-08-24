@@ -3,11 +3,13 @@
  * per-cut description; the guardrail clauses live here so they can be improved
  * globally without touching nine rows.
  */
-const PROMPT_TEMPLATE = `Edit this portrait photograph. Change ONLY the hair.
+/** Shown verbatim in the catalog editor as the fixed, non-editable lead-in. */
+export const PROMPT_PREFIX = `Edit this portrait photograph. Change ONLY the hair.
 
-New hairstyle: {{HAIRCUT_DESCRIPTION}}
+New hairstyle:`;
 
-Preserve exactly, with no alteration whatsoever:
+/** The identity-preservation rules — appended after the owner's description. */
+export const PROMPT_RULES = `Preserve exactly, with no alteration whatsoever:
 - the subject's facial features, bone structure, and expression
 - skin tone and skin texture
 - the subject's natural hairline position and natural hair density
@@ -19,5 +21,5 @@ Do not add hair volume or density the subject does not have.
 Photorealistic. Same photograph, same person, different haircut.`;
 
 export function buildGenerationPrompt(haircutDescription: string): string {
-  return PROMPT_TEMPLATE.replace("{{HAIRCUT_DESCRIPTION}}", haircutDescription.trim());
+  return `${PROMPT_PREFIX} ${haircutDescription.trim()}\n\n${PROMPT_RULES}`;
 }

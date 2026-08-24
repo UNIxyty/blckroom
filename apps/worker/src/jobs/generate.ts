@@ -15,7 +15,7 @@ import {
   enqueueComposeSheetOnce,
 } from "@blackroom/db";
 import { renderSingleCutCard } from "@blackroom/renderer";
-import { generateHaircutImage } from "../gemini.js";
+import { generateHaircutImage } from "@blackroom/shared/gemini";
 import { updateProgress } from "../progress.js";
 import { cutDisplayName, formatDate } from "../format.js";
 

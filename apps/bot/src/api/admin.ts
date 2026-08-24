@@ -1,9 +1,14 @@
 import type { FastifyInstance, preHandlerAsyncHookHandler } from "fastify";
 import type { Api } from "grammy";
 import { z } from "zod";
+import type { AppConfig } from "@blackroom/shared/config";
 import type { Storage } from "@blackroom/shared/storage";
 import { t, resolveLang } from "@blackroom/shared/i18n";
-import { MAX_ACTIVE_HAIRCUTS } from "@blackroom/shared";
+import { MAX_ACTIVE_HAIRCUTS, buildGenerationPrompt } from "@blackroom/shared";
+import { costForModelCents } from "@blackroom/shared/costs";
+import { generateHaircutImage } from "@blackroom/shared/gemini";
+import { validatePortraitPhoto } from "../lib/validatePhoto.js";
+import { normalizePhoto } from "../lib/normalizePhoto.js";
 import {
   countActiveHaircuts,
   haircutNameTaken,
@@ -14,6 +19,8 @@ import {
   listAuditForTarget,
   countOtherActiveOwners,
   setUserRole,
+  setShopTestImage,
+  countRecentTestGenerations,
 } from "@blackroom/db";
 import {
   listShopUsers,
@@ -42,8 +49,12 @@ const haircutPatch = z.object({
   is_active: z.boolean().optional(),
 });
 
+/** Editor test generations per shop per hour. */
+const TEST_GENERATIONS_PER_HOUR = 15;
+
 export function registerAdminRoutes(
   app: FastifyInstance,
+  config: AppConfig,
   storage: Storage,
   api: Api,
   authenticate: preHandlerAsyncHookHandler,
@@ -304,6 +315,128 @@ export function registerAdminRoutes(
       action: "haircut.reorder",
     });
     return { ok: true };
+  });
+
+  // ---- test portrait + test-before-saving (Part 2) -----------------------
+
+  app.get("/api/admin/test-photo", { preHandler: ownerOnly }, async (req) => {
+    const shop = (await getShop(req.user.shop_id!))!;
+    if (!shop.test_image_path) return { exists: false };
+    const url = await storage.createSignedUrl(shop.test_image_path, 600).catch(() => null);
+    return { exists: !!url, url };
+  });
+
+  app.post("/api/admin/test-photo", { preHandler: ownerOnly }, async (req) => {
+    const path = `shops/${req.user.shop_id}/test/portrait.jpg`;
+    const upload = await storage.createSignedUploadUrl(path);
+    return { upload_url: upload.url, path };
+  });
+
+  /** Same hygiene as client captures: normalize (HEIC/EXIF/size), face-check. */
+  app.post("/api/admin/test-photo/confirm", { preHandler: ownerOnly }, async (req, reply) => {
+    const path = `shops/${req.user.shop_id}/test/portrait.jpg`;
+    let uploaded: Buffer;
+    try {
+      uploaded = await storage.download(path);
+    } catch {
+      return reply.code(400).send({ error: "upload not found" });
+    }
+    const normalized = await normalizePhoto(uploaded);
+    if (!normalized.ok) {
+      await storage.remove([path]).catch(() => {});
+      return reply.code(422).send({ error: "photo rejected", reason: normalized.reason });
+    }
+    const validation = await validatePortraitPhoto(normalized.buffer);
+    if (!validation.ok) {
+      await storage.remove([path]).catch(() => {});
+      return reply.code(422).send({ error: "photo rejected", reason: validation.reason });
+    }
+    await storage.upload(path, normalized.buffer, "image/jpeg");
+    await setShopTestImage(req.user.shop_id!, path);
+    await audit({
+      shopId: req.user.shop_id!,
+      actorUserId: req.user.id,
+      action: "shop.test_photo",
+    });
+    return { ok: true };
+  });
+
+  /**
+   * Run one prompt against the stored test portrait — no save, no fan-out.
+   * Rate-limited per hour; the cost is audited and counts toward the cap.
+   */
+  app.post("/api/admin/haircuts/test", { preHandler: ownerOnly }, async (req, reply) => {
+    const body = z.object({ prompt: z.string().min(1).max(600) }).safeParse(req.body);
+    if (!body.success) return reply.code(400).send({ error: "bad request" });
+
+    const shop = (await getShop(req.user.shop_id!))!;
+    if (!shop.test_image_path) {
+      return reply.code(409).send({ error: "no test photo", reason: "no_test_photo" });
+    }
+    if ((await countRecentTestGenerations(shop.id)) >= TEST_GENERATIONS_PER_HOUR) {
+      return reply.code(429).send({ error: "rate limited", reason: "rate_limited" });
+    }
+    const usage = await monthlyUsage(shop.id);
+    if (usage.spend_cents >= shop.monthly_budget_cents) {
+      return reply.code(429).send({ error: "spend cap reached", reason: "budget" });
+    }
+
+    const source = await storage.download(shop.test_image_path);
+    let image;
+    try {
+      image = await generateHaircutImage(
+        config,
+        source,
+        "image/jpeg",
+        buildGenerationPrompt(body.data.prompt),
+      );
+    } catch (err) {
+      return reply.code(502).send({
+        error: err instanceof Error ? err.message.slice(0, 200) : "generation failed",
+        reason: "generation_failed",
+      });
+    }
+
+    const resultPath = `shops/${shop.id}/test/last-result.png`;
+    await storage.upload(resultPath, image.data, image.mimeType);
+    const cost = costForModelCents(config.GEMINI_IMAGE_MODEL);
+    await audit({
+      shopId: shop.id,
+      actorUserId: req.user.id,
+      action: "haircut.test",
+      meta: { cost_cents: cost, prompt_length: body.data.prompt.length },
+    });
+    const url = await storage.createSignedUrl(resultPath, 600);
+    return { url, cost_cents: cost };
+  });
+
+  /** Duplicate a cut as a starting point — created inactive, name uniquified. */
+  app.post("/api/admin/haircuts/:id/duplicate", { preHandler: ownerOnly }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const existing = await getHaircut(id);
+    if (!existing || existing.shop_id !== req.user.shop_id || existing.deleted_at) {
+      return reply.code(404).send({ error: "not found" });
+    }
+    let name = `${existing.name_en} 2`;
+    for (let n = 2; await haircutNameTaken(req.user.shop_id!, name); n++) {
+      name = `${existing.name_en} ${n + 1}`;
+      if (n > 20) return reply.code(409).send({ error: "name space exhausted" });
+    }
+    const copy = await createHaircut(req.user.shop_id!, {
+      name_en: name,
+      name_ru: existing.name_ru,
+      prompt: existing.prompt,
+      is_active: false,
+    });
+    await audit({
+      shopId: req.user.shop_id!,
+      actorUserId: req.user.id,
+      action: "haircut.duplicate",
+      targetType: "haircut",
+      targetId: copy.id,
+      meta: { from: existing.id },
+    });
+    return copy;
   });
 
   // ---- sessions (C8) -----------------------------------------------------

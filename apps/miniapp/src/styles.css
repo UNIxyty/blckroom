@@ -550,6 +550,44 @@ button {
 .mini-grid i { background: #2a302e; }
 .mini-grid i.lit { background: var(--c-primary); }
 
+/* ---- toast (D2) ---- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  max-width: 90%;
+  border: 1px solid var(--c-borderStrong);
+  background: var(--c-surface);
+  padding: 14px 18px;
+  z-index: 40;
+  animation: sheetUp var(--dur-sheet) var(--ease-enter);
+  white-space: nowrap;
+}
+
+/* preset chips */
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-row button {
+  border: 1px solid var(--c-border);
+  color: var(--c-secondary);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 8px 12px;
+}
+.chip-row button:active { border-color: var(--c-tertiary); }
+
+/* fixed prompt wrapper context */
+.wrapper-note {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--c-disabled);
+  border-left: 1px solid var(--c-border);
+  padding-left: 12px;
+  white-space: pre-wrap;
+}
+
 /* misc */
 .centered { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; padding: 0 40px; text-align: center; }
 .tap-row { cursor: pointer; }

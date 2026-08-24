@@ -264,6 +264,15 @@ export function Modal({
   );
 }
 
+/** D2 Toast: bordered strip pinned above the bottom edge, auto-dismissed by the caller. */
+export function Toast({ message }: { message: string }) {
+  return (
+    <div className="toast">
+      <span style={{ fontSize: 12, letterSpacing: "0.1em" }}>{message}</span>
+    </div>
+  );
+}
+
 export function BottomSheet({
   children,
   onClose,

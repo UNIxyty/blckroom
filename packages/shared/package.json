@@ -8,7 +8,9 @@
     "./config": "./src/config.ts",
     "./costs": "./src/costs.ts",
     "./storage": "./src/storage.ts",
-    "./i18n": "./src/i18n.ts"
+    "./i18n": "./src/i18n.ts",
+    "./gemini": "./src/gemini.ts",
+    "./prompt": "./src/prompt.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

@@ -20,7 +20,7 @@ registerAuthRoutes(app, config);
 registerMeRoutes(app, storage, authenticate);
 registerSessionRoutes(app, config, storage, authenticate);
 registerGenerateRoutes(app, config, storage, bot.api, authenticate);
-registerAdminRoutes(app, storage, bot.api, authenticate);
+registerAdminRoutes(app, config, storage, bot.api, authenticate);
 
 app.get("/health", async () => ({
   ok: true,
