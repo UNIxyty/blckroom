@@ -19,8 +19,6 @@ export interface GenerationWithCut extends GenerationRow {
   name_en: string;
   name_ru: string | null;
   prompt: string;
-  price_cents: number;
-  duration_minutes: number;
   sort_order: number;
 }
 
@@ -39,8 +37,7 @@ export async function createGenerations(
 
 export async function getGenerationWithCut(id: string): Promise<GenerationWithCut | null> {
   const { rows } = await getPool().query<GenerationWithCut>(
-    `select g.*, h.name_en, h.name_ru, h.prompt, h.price_cents,
-            h.duration_minutes, h.sort_order
+    `select g.*, h.name_en, h.name_ru, h.prompt, h.sort_order
      from generations g join haircuts h on h.id = g.haircut_id
      where g.id = $1`,
     [id],
@@ -50,8 +47,7 @@ export async function getGenerationWithCut(id: string): Promise<GenerationWithCu
 
 export async function listSessionGenerations(sessionId: string): Promise<GenerationWithCut[]> {
   const { rows } = await getPool().query<GenerationWithCut>(
-    `select g.*, h.name_en, h.name_ru, h.prompt, h.price_cents,
-            h.duration_minutes, h.sort_order
+    `select g.*, h.name_en, h.name_ru, h.prompt, h.sort_order
      from generations g join haircuts h on h.id = g.haircut_id
      where g.session_id = $1
      order by h.sort_order`,

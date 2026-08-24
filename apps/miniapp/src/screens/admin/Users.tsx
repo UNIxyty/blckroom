@@ -14,7 +14,7 @@ interface AdminUser {
 
 interface UserDetail extends AdminUser {
   sessions: number;
-  spend_cents: number;
+  activity: Array<{ action: string; at: string; by: string | null }>;
 }
 
 const name = (u: { first_name: string | null; username: string | null; id: string }) =>
@@ -161,7 +161,6 @@ function UserDetailScreen({ id, onBack }: { id: string; onBack: () => void }) {
   }
 
   const isPending = user.role === "pending" && user.status === "pending";
-  const money = (c: number) => `€${(c / 100).toFixed(0)}`;
 
   return (
     <div className="screen">
@@ -179,11 +178,29 @@ function UserDetailScreen({ id, onBack }: { id: string; onBack: () => void }) {
           <span className="stat-label">{t("spend.sessions")}</span>
           <span className="stat-value" style={{ fontSize: 28 }}>{user.sessions}</span>
         </div>
-        <div className="stat-card" style={{ flex: 1, borderColor: "var(--c-border)" }}>
-          <span className="stat-label">{t("spend.spent")}</span>
-          <span className="stat-value" style={{ fontSize: 28 }}>{money(user.spend_cents)}</span>
-        </div>
       </div>
+
+      {/* C10 folded in: what admins did to this account, right where it matters. */}
+      {user.activity.length > 0 && (
+        <div style={{ padding: "26px 20px 0" }} className="col">
+          <SectionLabel>{t("user.activity")}</SectionLabel>
+          <hr className="hairline" />
+          {user.activity.map((a, i) => (
+            <span key={i}>
+              <div className="list-row" style={{ minHeight: 44, padding: "6px 0" }}>
+                <span className="mono" style={{ fontSize: 11, color: "var(--c-secondary)" }}>
+                  {a.action}
+                  {a.by ? ` · ${a.by}` : ""}
+                </span>
+                <span className="mono" style={{ fontSize: 10, color: "var(--c-tertiary)" }}>
+                  {new Date(a.at).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+                </span>
+              </div>
+              <hr className="hairline" />
+            </span>
+          ))}
+        </div>
+      )}
 
       {error && <p className="field-error pad-x" style={{ paddingTop: 16 }}>{error}</p>}
 

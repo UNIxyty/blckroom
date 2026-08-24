@@ -7,8 +7,6 @@ export interface HaircutRow {
   name_en: string;
   prompt: string;
   reference_image_url: string | null;
-  price_cents: number;
-  duration_minutes: number;
   sort_order: number;
   is_active: boolean;
   deleted_at: Date | null;
@@ -74,23 +72,15 @@ export async function createHaircut(
     name_en: string;
     prompt: string;
     name_ru?: string | null | undefined;
-    price_cents?: number | undefined;
-    duration_minutes?: number | undefined;
+    is_active?: boolean | undefined;
   },
 ): Promise<HaircutRow> {
   const { rows } = await getPool().query<HaircutRow>(
-    `insert into haircuts (shop_id, name_en, prompt, name_ru, price_cents, duration_minutes, sort_order)
-     values ($1, $2, $3, $4, $5, $6,
+    `insert into haircuts (shop_id, name_en, prompt, name_ru, is_active, sort_order)
+     values ($1, $2, $3, $4, $5,
              (select coalesce(max(sort_order), 0) + 1 from haircuts where shop_id = $1))
      returning *`,
-    [
-      shopId,
-      fields.name_en,
-      fields.prompt,
-      fields.name_ru ?? null,
-      fields.price_cents ?? 0,
-      fields.duration_minutes ?? 30,
-    ],
+    [shopId, fields.name_en, fields.prompt, fields.name_ru ?? null, fields.is_active ?? true],
   );
   return rows[0]!;
 }
@@ -98,14 +88,7 @@ export async function createHaircut(
 export async function updateHaircut(
   id: string,
   patch: {
-    [K in
-      | "name_en"
-      | "name_ru"
-      | "prompt"
-      | "price_cents"
-      | "duration_minutes"
-      | "is_active"
-      | "reference_image_url"]?: HaircutRow[K] | undefined;
+    [K in "name_en" | "name_ru" | "prompt" | "is_active"]?: HaircutRow[K] | undefined;
   },
 ): Promise<HaircutRow | null> {
   const { rows } = await getPool().query<HaircutRow>(
@@ -113,22 +96,10 @@ export async function updateHaircut(
        name_en = coalesce($2, name_en),
        name_ru = coalesce($3, name_ru),
        prompt = coalesce($4, prompt),
-       price_cents = coalesce($5, price_cents),
-       duration_minutes = coalesce($6, duration_minutes),
-       is_active = coalesce($7, is_active),
-       reference_image_url = coalesce($8, reference_image_url)
+       is_active = coalesce($5, is_active)
      where id = $1
      returning *`,
-    [
-      id,
-      patch.name_en ?? null,
-      patch.name_ru ?? null,
-      patch.prompt ?? null,
-      patch.price_cents ?? null,
-      patch.duration_minutes ?? null,
-      patch.is_active ?? null,
-      patch.reference_image_url ?? null,
-    ],
+    [id, patch.name_en ?? null, patch.name_ru ?? null, patch.prompt ?? null, patch.is_active ?? null],
   );
   return rows[0] ?? null;
 }

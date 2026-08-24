@@ -70,6 +70,21 @@ export interface AuditRow {
   meta: Record<string, unknown>;
 }
 
+/** Admin actions that touched a specific target — folded into detail views. */
+export async function listAuditForTarget(targetId: string, limit = 8): Promise<AuditRow[]> {
+  const { rows } = await getPool().query<AuditRow>(
+    `select a.id, a.action, a.target_type, a.created_at, a.meta,
+            u.first_name as actor_name, u.username as actor_username
+     from audit_log a
+     left join users u on u.id = a.actor_user_id
+     where a.target_id = $1
+     order by a.created_at desc
+     limit $2`,
+    [targetId, limit],
+  );
+  return rows;
+}
+
 export async function listAudit(shopId: string, limit = 60): Promise<AuditRow[]> {
   const { rows } = await getPool().query<AuditRow>(
     `select a.id, a.action, a.target_type, a.created_at, a.meta,

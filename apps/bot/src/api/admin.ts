@@ -11,7 +11,7 @@ import {
   userStats,
   sessionsToday,
   listShopSessions,
-  listAudit,
+  listAuditForTarget,
   countOtherActiveOwners,
   setUserRole,
 } from "@blackroom/db";
@@ -22,7 +22,6 @@ import {
   rejectUser,
   setUserStatus,
   getShop,
-  updateShopSettings,
   monthlyUsage,
   listAllHaircuts,
   getHaircut,
@@ -40,8 +39,6 @@ const haircutPatch = z.object({
   name_en: z.string().min(1).max(80).optional(),
   name_ru: z.string().max(80).nullable().optional(),
   prompt: z.string().min(1).max(600).optional(),
-  price_cents: z.number().int().min(0).max(1_000_000).optional(),
-  duration_minutes: z.number().int().min(5).max(600).optional(),
   is_active: z.boolean().optional(),
 });
 
@@ -96,7 +93,7 @@ export function registerAdminRoutes(
     const { id } = req.params as { id: string };
     const target = await findUserById(id);
     if (!target) return reply.code(404).send({ error: "not found" });
-    const stats = await userStats(id);
+    const [stats, activity] = await Promise.all([userStats(id), listAuditForTarget(id)]);
     return {
       id: target.id,
       username: target.username,
@@ -105,7 +102,12 @@ export function registerAdminRoutes(
       status: target.status,
       created_at: target.created_at,
       sessions: stats.sessions,
-      spend_cents: stats.spend_cents,
+      // C10 folded in: the admin actions that touched this user.
+      activity: activity.map((a) => ({
+        action: a.action,
+        at: a.created_at,
+        by: a.actor_name ?? (a.actor_username ? `@${a.actor_username}` : null),
+      })),
     };
   });
 
@@ -304,96 +306,12 @@ export function registerAdminRoutes(
     return { ok: true };
   });
 
-  /** Reference image: signed upload URL, then PATCH sets the stored path. */
-  app.post(
-    "/api/admin/haircuts/:id/reference-upload",
-    { preHandler: ownerOnly },
-    async (req, reply) => {
-      const { id } = req.params as { id: string };
-      const existing = await getHaircut(id);
-      if (!existing || existing.shop_id !== req.user.shop_id) {
-        return reply.code(404).send({ error: "not found" });
-      }
-      const path = `shops/${req.user.shop_id}/refs/${id}.jpg`;
-      const upload = await storage.createSignedUploadUrl(path);
-      return { upload_url: upload.url, path };
-    },
-  );
-
-  app.post(
-    "/api/admin/haircuts/:id/reference-set",
-    { preHandler: ownerOnly },
-    async (req, reply) => {
-      const { id } = req.params as { id: string };
-      const existing = await getHaircut(id);
-      if (!existing || existing.shop_id !== req.user.shop_id) {
-        return reply.code(404).send({ error: "not found" });
-      }
-      const path = `shops/${req.user.shop_id}/refs/${id}.jpg`;
-      await updateHaircut(id, { reference_image_url: path });
-      return { ok: true };
-    },
-  );
-
-  // ---- spend dashboard ---------------------------------------------------
-
-  app.get("/api/admin/stats", { preHandler: ownerOnly }, async (req) => {
-    const shop = (await getShop(req.user.shop_id!))!;
-    const usage = await monthlyUsage(shop.id);
-    return {
-      sessions: usage.sessions,
-      spend_cents: usage.spend_cents,
-      budget_cents: shop.monthly_budget_cents,
-      currency: shop.currency,
-      cost_per_session_cents:
-        usage.sessions > 0 ? Math.round(usage.spend_cents / usage.sessions) : 0,
-    };
-  });
-
-  // ---- settings ----------------------------------------------------------
-
-  app.get("/api/admin/shop", { preHandler: ownerOnly }, async (req) => {
-    const shop = (await getShop(req.user.shop_id!))!;
-    return {
-      name: shop.name,
-      currency: shop.currency,
-      retention_hours: shop.retention_hours,
-      monthly_budget_cents: shop.monthly_budget_cents,
-    };
-  });
-
-  app.patch("/api/admin/shop", { preHandler: ownerOnly }, async (req, reply) => {
-    const body = z
-      .object({
-        name: z.string().min(1).max(120).optional(),
-        currency: z.string().length(3).optional(),
-        retention_hours: z.number().int().min(1).max(720).optional(),
-        monthly_budget_cents: z.number().int().min(0).max(100_000_000).optional(),
-      })
-      .safeParse(req.body);
-    if (!body.success) return reply.code(400).send({ error: "bad request" });
-    const updated = await updateShopSettings(req.user.shop_id!, body.data);
-    await audit({
-      shopId: req.user.shop_id!,
-      actorUserId: req.user.id,
-      action: "shop.update",
-      meta: body.data,
-    });
-    return updated;
-  });
-
   // ---- sessions (C8) -----------------------------------------------------
 
   app.get("/api/admin/sessions", { preHandler: ownerOnly }, async (req) => {
     const days = Math.min(Number((req.query as { days?: string }).days ?? 30) || 30, 90);
     return listShopSessions(req.user.shop_id!, days);
   });
-
-  // ---- audit log (C10) ---------------------------------------------------
-
-  app.get("/api/admin/audit", { preHandler: ownerOnly }, async (req) =>
-    listAudit(req.user.shop_id!),
-  );
 
   // ---- session purge (owner, on demand) ----------------------------------
 

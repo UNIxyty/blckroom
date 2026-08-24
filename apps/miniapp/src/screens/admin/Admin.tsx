@@ -5,10 +5,7 @@ import { api } from "../../api.js";
 import { ListRow, ProgressBar, SectionLabel, TopBar } from "../../ui/primitives.js";
 import { Catalog } from "./Catalog.js";
 import { Users } from "./Users.js";
-import { Spend } from "./Spend.js";
 import { Sessions } from "./Sessions.js";
-import { ShopSettings } from "./ShopSettings.js";
-import { AuditLog } from "./AuditLog.js";
 
 export interface Overview {
   pending: number;
@@ -23,9 +20,10 @@ export interface Overview {
   catalog_total: number;
 }
 
-type Sub = "home" | "users" | "catalog" | "spend" | "sessions" | "shop" | "audit";
+type Sub = "home" | "users" | "catalog" | "sessions";
 
-/** C1 — admin hub; one level deep, sections push over it. */
+/** C1 — admin hub for one shop: users, catalog, sessions. Spend is a single
+ * line against the Gemini cap, not a screen. */
 export function Admin() {
   const { t } = useI18n();
   const nav = useNav();
@@ -42,13 +40,13 @@ export function Admin() {
   const back = () => setSub("home");
   if (sub === "users") return <Users onBack={back} />;
   if (sub === "catalog") return <Catalog onBack={back} />;
-  if (sub === "spend") return <Spend onBack={back} />;
   if (sub === "sessions") return <Sessions onBack={back} />;
-  if (sub === "shop") return <ShopSettings onBack={back} />;
-  if (sub === "audit") return <AuditLog onBack={back} />;
 
-  const money = (cents: number) => `${ov?.currency === "EUR" ? "€" : (ov?.currency ?? "")}${Math.round(cents / 100)}`;
+  const sym = ov?.currency === "EUR" ? "€" : (ov?.currency ?? "");
+  const money = (cents: number) => `${sym}${(cents / 100).toFixed(0)}`;
   const attention = (ov?.pending ?? 0) > 0;
+  const pct = ov && ov.budget_cents > 0 ? (ov.spend_cents / ov.budget_cents) * 100 : 0;
+  const over = pct >= 100;
 
   return (
     <div className="screen">
@@ -83,17 +81,6 @@ export function Admin() {
           <div style={{ border: "1px solid var(--c-border)", padding: 18, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
             <span className="col gap-4">
               <span style={{ fontSize: 12, letterSpacing: "0.24em", textTransform: "uppercase", color: "var(--c-tertiary)" }}>
-                {t("spend.spent")} · {t("spend.month").toLowerCase()}
-              </span>
-              <span style={{ fontFamily: "var(--f-serif)", fontSize: 34, letterSpacing: "0.06em" }}>
-                {money(ov.spend_cents)}
-              </span>
-            </span>
-            <span className="meta-text">/ {money(ov.budget_cents)}</span>
-          </div>
-          <div style={{ border: "1px solid var(--c-border)", padding: 18, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
-            <span className="col gap-4">
-              <span style={{ fontSize: 12, letterSpacing: "0.24em", textTransform: "uppercase", color: "var(--c-tertiary)" }}>
                 {t("spend.sessions")}
               </span>
               <span style={{ fontFamily: "var(--f-serif)", fontSize: 34, letterSpacing: "0.06em" }}>
@@ -101,10 +88,19 @@ export function Admin() {
               </span>
             </span>
           </div>
+          {over && (
+            <div className="error-panel">
+              <div className="panel-head">
+                <span className="bang">!</span>
+                <span className="panel-title">{t("spend.capreached")}</span>
+              </div>
+              <p className="body-copy" style={{ fontSize: 13 }}>{t("spend.over")}</p>
+            </div>
+          )}
         </div>
       )}
 
-      <div className="pad-x col" style={{ paddingTop: 14 }}>
+      <div className="pad-x col" style={{ paddingTop: 4 }}>
         <SectionLabel>{t("admin.bar")}</SectionLabel>
         <hr className="hairline" />
         <ListRow title={t("admin.users")} value={ov ? String(ov.users) : ""} onClick={() => setSub("users")} />
@@ -113,13 +109,25 @@ export function Admin() {
         <hr className="hairline" />
         <ListRow title={t("admin.sessions")} value={ov ? String(ov.sessions_month) : ""} onClick={() => setSub("sessions")} />
         <hr className="hairline" />
-        <ListRow title={t("admin.spend")} value={ov ? money(ov.spend_cents) : ""} onClick={() => setSub("spend")} />
-        <hr className="hairline" />
-        <ListRow title={t("admin.shop")} arrow onClick={() => setSub("shop")} />
-        <hr className="hairline" />
-        <ListRow title={t("admin.audit")} arrow onClick={() => setSub("audit")} />
-        <hr className="hairline" />
       </div>
+
+      {/* The one spend surface: Gemini cost this month against the cap. */}
+      {ov && (
+        <div style={{ marginTop: "auto" }} className="pad-x col">
+          <hr className="hairline" />
+          <div style={{ height: 52, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--c-tertiary)" }}>
+              {t("spend.line")}
+            </span>
+            <span className="meta-text" style={over ? { color: "var(--c-primary)" } : undefined}>
+              {money(ov.spend_cents)} / {money(ov.budget_cents)}
+            </span>
+          </div>
+          <div className="progress-track" style={{ marginBottom: 20 }}>
+            <div className="fill" style={{ width: `${Math.min(100, pct)}%` }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

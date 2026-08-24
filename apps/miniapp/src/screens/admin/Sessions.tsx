@@ -54,7 +54,6 @@ export function Sessions({ onBack }: { onBack: () => void }) {
                   <span className="row-title">{t("sessions.by", { name: who, time: when })}</span>
                   <span className="row-sub">
                     {t("history.cuts", { n: s.done_count })} · {s.status}
-                    {s.cost_cents > 0 ? ` · €${(s.cost_cents / 100).toFixed(2)}` : ""}
                   </span>
                 </span>
                 {!purged && (

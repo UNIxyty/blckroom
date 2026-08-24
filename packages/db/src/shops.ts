@@ -27,28 +27,6 @@ export async function getDefaultShop(): Promise<ShopRow> {
   return shop;
 }
 
-export async function updateShopSettings(
-  id: string,
-  patch: {
-    name?: string | undefined;
-    currency?: string | undefined;
-    retention_hours?: number | undefined;
-    monthly_budget_cents?: number | undefined;
-  },
-): Promise<ShopRow | null> {
-  const { rows } = await getPool().query<ShopRow>(
-    `update shops set
-       name = coalesce($2, name),
-       currency = coalesce($3, currency),
-       retention_hours = coalesce($4, retention_hours),
-       monthly_budget_cents = coalesce($5, monthly_budget_cents)
-     where id = $1
-     returning *`,
-    [id, patch.name ?? null, patch.currency ?? null, patch.retention_hours ?? null, patch.monthly_budget_cents ?? null],
-  );
-  return rows[0] ?? null;
-}
-
 /** Sessions + spend for the shop's current calendar month (shop timezone). */
 export async function monthlyUsage(shopId: string): Promise<{ sessions: number; spend_cents: number }> {
   const { rows } = await getPool().query<{ sessions: string; spend_cents: string }>(
