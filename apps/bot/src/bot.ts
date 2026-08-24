@@ -14,6 +14,8 @@ import {
   listBarberSessionIds,
   listSessionImagePaths,
   stripSessionImagery,
+  getSession,
+  enqueueJob,
   audit,
   type UserRow,
 } from "@blackroom/db";
@@ -139,6 +141,32 @@ export function createBot(config: AppConfig, storage: Storage): Bot<BotContext> 
         .editMessageText(t(ctx.lang, "bot.rejected.done", { name: displayName(updated) }))
         .catch(() => {});
     }
+  });
+
+  // §9: "Send as album" under the delivered sheet — heavy lifting queued to
+  // the worker so the webhook answers instantly.
+  bot.callbackQuery(/^album:(.+)$/, async (ctx) => {
+    const actor = ctx.dbUser;
+    if (!actor || actor.status !== "active" || actor.role === "pending") {
+      await ctx.answerCallbackQuery({ text: t(ctx.lang, "bot.notallowed") });
+      return;
+    }
+    const sessionId = (ctx.match as RegExpMatchArray)[1]!;
+    const session = await getSession(sessionId);
+    const isOwner = ["owner", "superadmin"].includes(actor.role);
+    if (!session || (session.barber_id !== actor.id && !isOwner)) {
+      await ctx.answerCallbackQuery({ text: t(ctx.lang, "bot.notallowed") });
+      return;
+    }
+    if (session.status === "expired" || session.expires_at.getTime() < Date.now()) {
+      await ctx.answerCallbackQuery({ text: t(ctx.lang, "history.deleted") });
+      return;
+    }
+    await enqueueJob("send_album", {
+      session_id: session.id,
+      chat_id: ctx.chat?.id ?? Number(actor.telegram_id),
+    });
+    await ctx.answerCallbackQuery({});
   });
 
   const gated = bot.filter((ctx): ctx is BotContext => {

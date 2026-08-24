@@ -6,6 +6,7 @@ import { claimJobs, completeJob, failJob, markGenerationFailed, type JobRow } fr
 import { runGenerateJob, settle, type GeneratePayload } from "./jobs/generate.js";
 import { runComposeSheetJob, type ComposeSheetPayload } from "./jobs/composeSheet.js";
 import { runDeliverJob, type DeliverPayload } from "./jobs/deliver.js";
+import { runSendAlbumJob, type SendAlbumPayload } from "./jobs/sendAlbum.js";
 
 const CONCURRENCY = 9;
 const POLL_INTERVAL_MS = 500;
@@ -34,6 +35,9 @@ export function startQueue(deps: QueueDeps): () => void {
           break;
         case "deliver":
           await runDeliverJob(deps.config, deps.storage, deps.api, job.payload as unknown as DeliverPayload);
+          break;
+        case "send_album":
+          await runSendAlbumJob(deps.storage, deps.api, job.payload as unknown as SendAlbumPayload);
           break;
         default: {
           const handler = deps.extraHandlers?.[job.type];

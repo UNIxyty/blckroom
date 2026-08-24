@@ -48,10 +48,13 @@ export async function runDeliverJob(
   const done = await countDoneGenerations(session.id);
   const total = generations.length;
   const shareUrl = `${config.PUBLIC_APP_URL}/s/${session.id}`;
-  const keyboard = new InlineKeyboard().url(
-    t(lang, "bot.send.client"),
-    `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(t(lang, "bot.share.text"))}`,
-  );
+  const keyboard = new InlineKeyboard()
+    .url(
+      t(lang, "bot.send.client"),
+      `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(t(lang, "bot.share.text"))}`,
+    )
+    .row()
+    .text(t(lang, "bot.send.album"), `album:${session.id}`);
 
   await api.sendPhoto(chatId, new InputFile(sheetJpeg, "black-room-sheet.jpg"), {
     caption:

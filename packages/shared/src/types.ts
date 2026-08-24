@@ -20,7 +20,8 @@ export type JobType =
   | "generate"
   | "compose_sheet"
   | "deliver"
-  | "retention_sweep";
+  | "retention_sweep"
+  | "send_album";
 
 export type JobStatus = "queued" | "running" | "done" | "failed" | "dead";
 
