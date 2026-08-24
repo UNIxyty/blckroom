@@ -16,6 +16,8 @@ import {
 } from "@blackroom/db";
 import { requireRole } from "./auth.js";
 import { validatePortraitPhoto } from "../lib/validatePhoto.js";
+import { normalizePhoto } from "../lib/normalizePhoto.js";
+import { MAX_UPLOAD_MB } from "@blackroom/shared";
 
 /** Hard cap: sessions per barber per day. */
 export const SESSIONS_PER_BARBER_PER_DAY = 20;
@@ -95,12 +97,28 @@ export function registerSessionRoutes(
     }
 
     const sourcePath = `shops/${session.shop_id}/sessions/${session.id}/source.jpg`;
-    let photo: Buffer;
+    let uploaded: Buffer;
     try {
-      photo = await storage.download(sourcePath);
+      uploaded = await storage.download(sourcePath);
     } catch {
       return reply.code(400).send({ error: "Upload not found — try again." });
     }
+
+    // §11: cap size, convert HEIC, honour EXIF orientation then strip it.
+    const normalized = await normalizePhoto(uploaded);
+    if (!normalized.ok) {
+      await storage.remove([sourcePath]).catch(() => {});
+      return reply.code(422).send({
+        error:
+          normalized.reason === "too_big"
+            ? `File is over ${MAX_UPLOAD_MB} MB.`
+            : VALIDATION_MESSAGES["not_an_image"],
+        reason: normalized.reason === "too_big" ? "too_big" : "not_an_image",
+      });
+    }
+    const photo = normalized.buffer;
+    // Persist the normalized JPEG — everything downstream reads this path.
+    await storage.upload(sourcePath, photo, "image/jpeg");
 
     const validation = await validatePortraitPhoto(photo);
     if (!validation.ok) {

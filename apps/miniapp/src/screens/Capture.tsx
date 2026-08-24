@@ -7,6 +7,7 @@ import type { NewSession } from "./Consent.js";
 import type { MessageKey } from "@blackroom/shared/i18n";
 
 type Step =
+  | { kind: "choice" }
   | { kind: "camera" }
   | { kind: "blocked" }
   | { kind: "preview"; blob: Blob; url: string }
@@ -19,13 +20,16 @@ const REJECTION_KEYS: Record<string, [MessageKey, MessageKey]> = {
   face_off_center: ["capture.error.title.offcenter", "capture.error.offcenter"],
   face_too_small: ["capture.error.title.far", "capture.error.far"],
   not_an_image: ["capture.error.title.file", "capture.error.file"],
+  too_big: ["capture.error.title.toobig", "capture.error.toobig"],
 };
+
+const MAX_UPLOAD_MB = 15;
 
 /** B3 — camera with guide overlay, preview, server validation. */
 export function Capture({ session }: { session: NewSession }) {
   const { t } = useI18n();
   const nav = useNav();
-  const [step, setStep] = useState<Step>({ kind: "camera" });
+  const [step, setStep] = useState<Step>({ kind: "choice" });
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const upload = useCallback(
@@ -58,26 +62,73 @@ export function Capture({ session }: { session: NewSession }) {
     [session, nav],
   );
 
-  const onFile = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) setStep({ kind: "preview", blob: file, url: URL.createObjectURL(file) });
-      e.target.value = "";
-    },
-    [],
+  const onFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    // Reject oversized files here with a clear message, not a timeout.
+    if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
+      setStep({ kind: "rejected", titleKey: "capture.error.title.toobig", bodyKey: "capture.error.toobig" });
+      return;
+    }
+    setStep({ kind: "preview", blob: file, url: URL.createObjectURL(file) });
+  }, []);
+
+  const filePicker = (
+    <input
+      ref={fileRef}
+      type="file"
+      accept="image/*,.heic,.heif"
+      style={{ display: "none" }}
+      onChange={onFile}
+    />
   );
+
+  if (step.kind === "choice") {
+    // B3 entry — camera and upload with equal weight.
+    return (
+      <div className="screen">
+        <TopBar label={t("capture.bar")} onBack={nav.pop} />
+        <div className="grow col gap-12" style={{ padding: "36px 20px 20px" }}>
+          <h1 className="serif-title" style={{ fontSize: 30, letterSpacing: "0.12em" }}>
+            {t("capture.title")}
+          </h1>
+          <p className="hint-copy" style={{ fontSize: 13 }}>{t("capture.sub")}</p>
+          <div className="grow col gap-12" style={{ marginTop: 12 }}>
+            <button className="choice-card hero" onClick={() => setStep({ kind: "camera" })}>
+              <span style={{ width: 74, height: 74, border: "1px solid var(--c-secondary)", position: "relative", display: "block" }}>
+                <span style={{ position: "absolute", left: "50%", top: "50%", width: 34, height: 44, margin: "-24px 0 0 -17px", border: "1px solid var(--c-tertiary)", borderRadius: "17px/22px", display: "block" }} />
+              </span>
+              <span className="choice-label">{t("capture.take")}</span>
+            </button>
+            <button className="choice-card" onClick={() => fileRef.current?.click()}>
+              <span style={{ width: 74, height: 74, border: "1px solid var(--c-borderStrong)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 14 }}>
+                <span style={{ width: 40, height: 1, background: "var(--c-tertiary)", display: "block" }} />
+              </span>
+              <span className="choice-label">{t("capture.upload")}</span>
+            </button>
+          </div>
+        </div>
+        {filePicker}
+      </div>
+    );
+  }
 
   if (step.kind === "camera") {
     return (
-      <CameraView
-        onCapture={(blob, url) => setStep({ kind: "preview", blob, url })}
-        onBlocked={() => setStep({ kind: "blocked" })}
-        onClose={nav.pop}
-      />
+      <>
+        <CameraView
+          onCapture={(blob, url) => setStep({ kind: "preview", blob, url })}
+          onBlocked={() => setStep({ kind: "blocked" })}
+          onClose={() => setStep({ kind: "choice" })}
+        />
+        {filePicker}
+      </>
     );
   }
 
   if (step.kind === "blocked") {
+    // D3 permission-denied pattern: same frame as Error, secondary = upload.
     return (
       <div className="screen">
         <TopBar label={t("capture.bar")} onBack={nav.pop} />
@@ -92,7 +143,7 @@ export function Capture({ session }: { session: NewSession }) {
             }
           />
         </div>
-        <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={onFile} />
+        {filePicker}
       </div>
     );
   }
@@ -149,7 +200,11 @@ export function Capture({ session }: { session: NewSession }) {
         <Button variant="primary" onClick={() => setStep({ kind: "camera" })}>
           {t("capture.retake")}
         </Button>
+        <Button variant="secondary" onClick={() => fileRef.current?.click()}>
+          {t("capture.upload.instead")}
+        </Button>
       </div>
+      {filePicker}
     </div>
   );
 }
