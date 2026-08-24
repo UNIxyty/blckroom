@@ -4,7 +4,6 @@ import { api } from "../../api.js";
 interface Haircut {
   id: string;
   name_en: string;
-  name_lv: string | null;
   name_ru: string | null;
   prompt: string;
   price_cents: number;
@@ -109,7 +108,6 @@ function EditDialog({
 }) {
   const [form, setForm] = useState({
     name_en: cut?.name_en ?? "",
-    name_lv: cut?.name_lv ?? "",
     name_ru: cut?.name_ru ?? "",
     prompt: cut?.prompt ?? "",
     price: cut ? String(cut.price_cents / 100) : "25",
@@ -126,7 +124,6 @@ function EditDialog({
     try {
       const body = {
         name_en: form.name_en,
-        name_lv: form.name_lv || null,
         name_ru: form.name_ru || null,
         prompt: form.prompt,
         price_cents: Math.round(Number(form.price || 0) * 100),
@@ -169,10 +166,6 @@ function EditDialog({
           <label>
             Name (EN)
             <input value={form.name_en} onChange={set("name_en")} />
-          </label>
-          <label>
-            Name (LV)
-            <input value={form.name_lv} onChange={set("name_lv")} />
           </label>
           <label>
             Name (RU)

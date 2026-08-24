@@ -2,7 +2,14 @@ import { InlineKeyboard, InputFile, type Api } from "grammy";
 import sharp from "sharp";
 import type { AppConfig } from "@blackroom/shared/config";
 import type { Storage } from "@blackroom/shared/storage";
-import { getSession, countDoneGenerations, audit } from "@blackroom/db";
+import { t, resolveLang, type Lang } from "@blackroom/shared/i18n";
+import {
+  getSession,
+  countDoneGenerations,
+  listSessionGenerations,
+  findUserById,
+  audit,
+} from "@blackroom/db";
 import { clearProgress } from "../progress.js";
 
 export interface DeliverPayload {
@@ -23,10 +30,13 @@ export async function runDeliverJob(
   if (!session?.tg_chat_id) return;
   const chatId = Number(session.tg_chat_id);
 
+  const barber = await findUserById(session.barber_id);
+  const lang: Lang = resolveLang(barber?.language);
+
   clearProgress(session.id);
 
   if (!session.sheet_image_path) {
-    await replaceProgress(api, session, "Generation failed — no previews came back. Try another photo.");
+    await replaceProgress(api, session, t(lang, "bot.sheet.failed"));
     return;
   }
 
@@ -34,18 +44,20 @@ export async function runDeliverJob(
   // Telegram photos are recompressed anyway; JPEG keeps us under the 10MB bot limit.
   const sheetJpeg = await sharp(sheetPng).jpeg({ quality: 90 }).toBuffer();
 
+  const generations = await listSessionGenerations(session.id);
   const done = await countDoneGenerations(session.id);
+  const total = generations.length;
   const shareUrl = `${config.PUBLIC_APP_URL}/s/${session.id}`;
   const keyboard = new InlineKeyboard().url(
-    "Send to client",
-    `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent("Your haircut previews — Black Room")}`,
+    t(lang, "bot.send.client"),
+    `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(t(lang, "bot.share.text"))}`,
   );
 
   await api.sendPhoto(chatId, new InputFile(sheetJpeg, "black-room-sheet.jpg"), {
     caption:
-      done === 9
-        ? "Preview sheet ready."
-        : `Preview sheet ready (${done}/9 — the rest didn't generate).`,
+      done === total
+        ? t(lang, "bot.sheet.ready")
+        : t(lang, "bot.sheet.partial", { n: done, total }),
     reply_markup: keyboard,
   });
 

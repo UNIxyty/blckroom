@@ -17,7 +17,7 @@ const bot = createBot(config, storage);
 const authenticate = makeAuthenticate(config);
 
 registerAuthRoutes(app, config);
-registerMeRoutes(app, authenticate);
+registerMeRoutes(app, storage, authenticate);
 registerSessionRoutes(app, config, storage, authenticate);
 registerGenerateRoutes(app, config, storage, bot.api, authenticate);
 registerAdminRoutes(app, storage, bot.api, authenticate);

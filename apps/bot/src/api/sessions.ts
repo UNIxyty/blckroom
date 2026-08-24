@@ -180,9 +180,9 @@ export async function serializeSession(
           .catch(() => null)
       : null;
 
+  const rows = await listSessionGenerations(session.id);
   let generations: unknown[] | undefined;
   if (options.withGenerations) {
-    const rows = await listSessionGenerations(session.id);
     generations = await Promise.all(
       rows.map(async (g) => ({
         id: g.id,
@@ -203,6 +203,7 @@ export async function serializeSession(
     expires_at: session.expires_at,
     sheet_url: sheetUrl,
     cost_cents: session.cost_cents,
+    generation_count: rows.length,
     ...(generations ? { generations } : {}),
   };
 }

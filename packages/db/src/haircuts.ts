@@ -3,7 +3,6 @@ import { getPool } from "./client.js";
 export interface HaircutRow {
   id: string;
   shop_id: string;
-  name_lv: string | null;
   name_ru: string | null;
   name_en: string;
   prompt: string;
@@ -40,22 +39,20 @@ export async function createHaircut(
   fields: {
     name_en: string;
     prompt: string;
-    name_lv?: string | null | undefined;
     name_ru?: string | null | undefined;
     price_cents?: number | undefined;
     duration_minutes?: number | undefined;
   },
 ): Promise<HaircutRow> {
   const { rows } = await getPool().query<HaircutRow>(
-    `insert into haircuts (shop_id, name_en, prompt, name_lv, name_ru, price_cents, duration_minutes, sort_order)
-     values ($1, $2, $3, $4, $5, $6, $7,
+    `insert into haircuts (shop_id, name_en, prompt, name_ru, price_cents, duration_minutes, sort_order)
+     values ($1, $2, $3, $4, $5, $6,
              (select coalesce(max(sort_order), 0) + 1 from haircuts where shop_id = $1))
      returning *`,
     [
       shopId,
       fields.name_en,
       fields.prompt,
-      fields.name_lv ?? null,
       fields.name_ru ?? null,
       fields.price_cents ?? 0,
       fields.duration_minutes ?? 30,
@@ -69,7 +66,6 @@ export async function updateHaircut(
   patch: {
     [K in
       | "name_en"
-      | "name_lv"
       | "name_ru"
       | "prompt"
       | "price_cents"
@@ -81,19 +77,17 @@ export async function updateHaircut(
   const { rows } = await getPool().query<HaircutRow>(
     `update haircuts set
        name_en = coalesce($2, name_en),
-       name_lv = coalesce($3, name_lv),
-       name_ru = coalesce($4, name_ru),
-       prompt = coalesce($5, prompt),
-       price_cents = coalesce($6, price_cents),
-       duration_minutes = coalesce($7, duration_minutes),
-       is_active = coalesce($8, is_active),
-       reference_image_url = coalesce($9, reference_image_url)
+       name_ru = coalesce($3, name_ru),
+       prompt = coalesce($4, prompt),
+       price_cents = coalesce($5, price_cents),
+       duration_minutes = coalesce($6, duration_minutes),
+       is_active = coalesce($7, is_active),
+       reference_image_url = coalesce($8, reference_image_url)
      where id = $1
      returning *`,
     [
       id,
       patch.name_en ?? null,
-      patch.name_lv ?? null,
       patch.name_ru ?? null,
       patch.prompt ?? null,
       patch.price_cents ?? null,

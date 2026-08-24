@@ -1,6 +1,7 @@
 import { Bot, InlineKeyboard, type Context } from "grammy";
 import type { AppConfig } from "@blackroom/shared/config";
 import type { Storage } from "@blackroom/shared/storage";
+import { t, resolveLang, type Lang } from "@blackroom/shared/i18n";
 import {
   upsertPendingUser,
   findUserByTelegramId,
@@ -19,18 +20,25 @@ import {
 
 export interface BotContext extends Context {
   dbUser: UserRow | null;
+  lang: Lang;
 }
 
 function displayName(u: UserRow): string {
   return u.first_name ?? (u.username ? `@${u.username}` : `#${u.telegram_id}`);
 }
 
+/** Language for messaging an arbitrary user row (outside an update context). */
+function langOf(u: UserRow): Lang {
+  return resolveLang(u.language);
+}
+
 export function createBot(config: AppConfig, storage: Storage): Bot<BotContext> {
   const bot = new Bot<BotContext>(config.TELEGRAM_BOT_TOKEN);
 
-  // Resolve telegram_id → user row once per update.
+  // Resolve telegram_id → user row + language once per update.
   bot.use(async (ctx, next) => {
     ctx.dbUser = ctx.from ? await findUserByTelegramId(ctx.from.id) : null;
+    ctx.lang = resolveLang(ctx.dbUser?.language, ctx.from?.language_code);
     await next();
   });
 
@@ -41,34 +49,34 @@ export function createBot(config: AppConfig, storage: Storage): Bot<BotContext> 
       ctx.from.username ?? null,
       ctx.from.first_name ?? null,
     );
+    const lang = resolveLang(user.language, ctx.from.language_code);
 
     if (user.status === "suspended") {
-      await ctx.reply("Your access has been suspended. Contact the shop owner.");
+      await ctx.reply(t(lang, "bot.start.suspended"));
       return;
     }
     if (user.role !== "pending") {
-      await ctx.reply("You're in. Use /new to start a client preview.");
+      await ctx.reply(t(lang, "bot.start.active"));
       return;
     }
 
-    await ctx.reply(
-      "Welcome to Black Room. Your access request has been sent to the owner — you'll get a message here once you're approved.",
-    );
+    await ctx.reply(t(lang, "bot.start.welcome"));
 
     if (created) {
-      const keyboard = new InlineKeyboard()
-        .text("✓ Approve", `approve:${user.id}`)
-        .text("✗ Reject", `reject:${user.id}`);
       const approvers = await listApprovers();
       for (const approver of approvers) {
+        const al = langOf(approver);
+        const keyboard = new InlineKeyboard()
+          .text(t(al, "bot.approve"), `approve:${user.id}`)
+          .text(t(al, "bot.reject"), `reject:${user.id}`);
         try {
           await bot.api.sendMessage(
             Number(approver.telegram_id),
-            `New access request: ${displayName(user)}${user.username ? ` (@${user.username})` : ""}`,
+            t(al, "bot.request.new", { name: displayName(user) }),
             { reply_markup: keyboard },
           );
         } catch {
-          // An approver who never opened the bot can't be messaged; skip.
+          // Approver never opened the bot; skip.
         }
       }
     }
@@ -77,17 +85,17 @@ export function createBot(config: AppConfig, storage: Storage): Bot<BotContext> 
   bot.callbackQuery(/^(approve|reject):(.+)$/, async (ctx) => {
     const actor = ctx.dbUser;
     if (!actor || !["owner", "superadmin"].includes(actor.role) || actor.status !== "active") {
-      await ctx.answerCallbackQuery({ text: "Not allowed." });
+      await ctx.answerCallbackQuery({ text: t(ctx.lang, "bot.notallowed") });
       return;
     }
     const [, action, targetId] = ctx.match as RegExpMatchArray;
     const target = await findUserById(targetId!);
     if (!target) {
-      await ctx.answerCallbackQuery({ text: "User no longer exists." });
+      await ctx.answerCallbackQuery({ text: t(ctx.lang, "bot.usergone") });
       return;
     }
     if (target.role !== "pending" || target.status === "suspended") {
-      await ctx.answerCallbackQuery({ text: "Already handled." });
+      await ctx.answerCallbackQuery({ text: t(ctx.lang, "bot.handled") });
       await ctx.editMessageReplyMarkup(undefined).catch(() => {});
       return;
     }
@@ -96,7 +104,7 @@ export function createBot(config: AppConfig, storage: Storage): Bot<BotContext> 
     if (action === "approve") {
       const updated = await approveUser(target.id, shop.id, actor.id);
       if (!updated) {
-        await ctx.answerCallbackQuery({ text: "Already handled." });
+        await ctx.answerCallbackQuery({ text: t(ctx.lang, "bot.handled") });
         return;
       }
       await audit({
@@ -106,20 +114,17 @@ export function createBot(config: AppConfig, storage: Storage): Bot<BotContext> 
         targetType: "user",
         targetId: target.id,
       });
-      await ctx.answerCallbackQuery({ text: "Approved." });
+      await ctx.answerCallbackQuery({});
       await ctx
-        .editMessageText(`✓ Approved ${displayName(updated)} as barber.`)
+        .editMessageText(t(ctx.lang, "bot.approved.done", { name: displayName(updated) }))
         .catch(() => {});
       await bot.api
-        .sendMessage(
-          Number(updated.telegram_id),
-          "You've been approved. Use /new to start a client preview.",
-        )
+        .sendMessage(Number(updated.telegram_id), t(langOf(updated), "bot.approved.msg"))
         .catch(() => {});
     } else {
       const updated = await rejectUser(target.id, actor.id);
       if (!updated) {
-        await ctx.answerCallbackQuery({ text: "Already handled." });
+        await ctx.answerCallbackQuery({ text: t(ctx.lang, "bot.handled") });
         return;
       }
       await audit({
@@ -129,14 +134,13 @@ export function createBot(config: AppConfig, storage: Storage): Bot<BotContext> 
         targetType: "user",
         targetId: target.id,
       });
-      await ctx.answerCallbackQuery({ text: "Rejected." });
+      await ctx.answerCallbackQuery({});
       await ctx
-        .editMessageText(`✗ Rejected ${displayName(updated)}.`)
+        .editMessageText(t(ctx.lang, "bot.rejected.done", { name: displayName(updated) }))
         .catch(() => {});
     }
   });
 
-  // Everything below requires an active barber/owner/superadmin.
   const gated = bot.filter((ctx): ctx is BotContext => {
     const u = ctx.dbUser;
     return !!u && u.status === "active" && u.role !== "pending";
@@ -152,26 +156,26 @@ export function createBot(config: AppConfig, storage: Storage): Bot<BotContext> 
       return isCommand && blocked && !isStart;
     })
     .on("message", async (ctx) => {
-      await ctx.reply("Your access isn't active yet — ask the owner, or send /start to check.");
+      await ctx.reply(t(ctx.lang, "bot.refusal"));
     });
 
   gated.command("new", async (ctx) => {
-    const keyboard = new InlineKeyboard().webApp("Open camera", `${config.PUBLIC_APP_URL}/`);
-    await ctx.reply("New client preview — open the capture screen:", {
-      reply_markup: keyboard,
-    });
+    const keyboard = new InlineKeyboard().webApp(
+      t(ctx.lang, "bot.new.button"),
+      `${config.PUBLIC_APP_URL}/`,
+    );
+    await ctx.reply(t(ctx.lang, "bot.new.open"), { reply_markup: keyboard });
   });
 
   gated.command("help", async (ctx) => {
     const owner = ["owner", "superadmin"].includes(ctx.dbUser!.role);
-    await ctx.reply(
-      [
-        "/new — photograph a client, get a 9-cut preview sheet",
-        "/help — this",
-        "/delete_my_data — remove all imagery from your sessions",
-        ...(owner ? ["/stats — sessions and spend this month", "/users — manage users"] : []),
-      ].join("\n"),
-    );
+    const lines = [
+      t(ctx.lang, "bot.help.new"),
+      t(ctx.lang, "bot.help.help"),
+      t(ctx.lang, "bot.help.delete"),
+      ...(owner ? [t(ctx.lang, "bot.help.stats"), t(ctx.lang, "bot.help.users")] : []),
+    ];
+    await ctx.reply(lines.join("\n"));
   });
 
   gated.command("delete_my_data", async (ctx) => {
@@ -192,31 +196,32 @@ export function createBot(config: AppConfig, storage: Storage): Bot<BotContext> 
     });
     await ctx.reply(
       sessionIds.length === 0
-        ? "Nothing to delete — you have no sessions with stored imagery."
-        : `Deleted ${removed} images from ${sessionIds.length} of your sessions.`,
+        ? t(ctx.lang, "bot.deleted.none")
+        : t(ctx.lang, "bot.deleted.done", { images: removed, sessions: sessionIds.length }),
     );
   });
 
-  const ownerOnly = gated.filter((ctx) =>
-    ["owner", "superadmin"].includes(ctx.dbUser!.role),
-  );
+  const ownerOnly = gated.filter((ctx) => ["owner", "superadmin"].includes(ctx.dbUser!.role));
 
   ownerOnly.command("stats", async (ctx) => {
     const shop = await getDefaultShop();
     const usage = await monthlyUsage(shop.id);
-    const spend = (usage.spend_cents / 100).toFixed(2);
-    const budget = (shop.monthly_budget_cents / 100).toFixed(2);
     await ctx.reply(
-      `This month: ${usage.sessions} sessions · ${spend} ${shop.currency} spent of ${budget} ${shop.currency} budget.`,
+      t(ctx.lang, "bot.stats", {
+        sessions: usage.sessions,
+        spend: (usage.spend_cents / 100).toFixed(2),
+        budget: (shop.monthly_budget_cents / 100).toFixed(2),
+        currency: shop.currency,
+      }),
     );
   });
 
   ownerOnly.command("users", async (ctx) => {
     const keyboard = new InlineKeyboard().webApp(
-      "Open admin",
+      t(ctx.lang, "bot.users.button"),
       `${config.PUBLIC_APP_URL}/?screen=admin`,
     );
-    await ctx.reply("User management:", { reply_markup: keyboard });
+    await ctx.reply(t(ctx.lang, "bot.users.open"), { reply_markup: keyboard });
   });
 
   return bot;

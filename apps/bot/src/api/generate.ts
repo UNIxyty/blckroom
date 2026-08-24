@@ -2,6 +2,7 @@ import type { FastifyInstance, preHandlerAsyncHookHandler } from "fastify";
 import type { Api } from "grammy";
 import type { AppConfig } from "@blackroom/shared/config";
 import type { Storage } from "@blackroom/shared/storage";
+import { t, resolveLang } from "@blackroom/shared/i18n";
 import {
   getSession,
   setSessionStatus,
@@ -52,7 +53,7 @@ export function registerGenerateRoutes(
     try {
       const msg = await api.sendMessage(
         Number(req.user.telegram_id),
-        `Generating… 0/${generations.length}`,
+        t(resolveLang(req.user.language), "bot.progress", { n: 0, total: generations.length }),
       );
       await setSessionDelivery(session.id, msg.chat.id, msg.message_id);
     } catch {

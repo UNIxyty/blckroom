@@ -7,6 +7,10 @@ export interface Me {
   first_name: string | null;
   username?: string | null;
   shop_id?: string | null;
+  language: "en" | "ru" | null;
+  created_at?: string;
+  owner_contact?: string | null;
+  pending_count?: number;
 }
 
 let token: string | null = null;
@@ -48,7 +52,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, body.error ?? `request failed (${res.status})`);
+    throw new ApiError(res.status, body.error ?? `request failed (${res.status})`, body.reason);
   }
   return res.json();
 }
@@ -57,6 +61,7 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    public reason?: string,
   ) {
     super(message);
   }

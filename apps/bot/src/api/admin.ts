@@ -2,6 +2,7 @@ import type { FastifyInstance, preHandlerAsyncHookHandler } from "fastify";
 import type { Api } from "grammy";
 import { z } from "zod";
 import type { Storage } from "@blackroom/shared/storage";
+import { t, resolveLang } from "@blackroom/shared/i18n";
 import {
   listShopUsers,
   findUserById,
@@ -25,7 +26,6 @@ import { requireRole } from "./auth.js";
 
 const haircutPatch = z.object({
   name_en: z.string().min(1).max(80).optional(),
-  name_lv: z.string().max(80).nullable().optional(),
   name_ru: z.string().max(80).nullable().optional(),
   prompt: z.string().min(1).max(2000).optional(),
   price_cents: z.number().int().min(0).max(1_000_000).optional(),
@@ -63,24 +63,25 @@ export function registerAdminRoutes(
     if (target.role === "superadmin") return reply.code(403).send({ error: "forbidden" });
 
     const shopId = req.user.shop_id!;
+    const targetLang = resolveLang(target.language);
     let result: unknown = null;
     let notify: string | null = null;
 
     switch (action) {
       case "approve":
         result = await approveUser(target.id, shopId, req.user.id);
-        notify = "You've been approved. Use /new to start a client preview.";
+        notify = t(targetLang, "bot.approved.msg");
         break;
       case "reject":
         result = await rejectUser(target.id, req.user.id);
         break;
       case "suspend":
         result = await setUserStatus(target.id, "suspended");
-        notify = "Your Black Room access has been suspended.";
+        notify = t(targetLang, "bot.suspended.notify");
         break;
       case "activate":
         result = target.role === "pending" ? null : await setUserStatus(target.id, "active");
-        notify = "Your Black Room access has been restored.";
+        notify = t(targetLang, "bot.restored.notify");
         break;
       default:
         return reply.code(400).send({ error: "unknown action" });

@@ -12,6 +12,11 @@ export interface UserRow {
   created_at: Date;
   approved_by: string | null;
   approved_at: Date | null;
+  language: "en" | "ru" | null;
+}
+
+export async function setUserLanguage(userId: string, language: "en" | "ru"): Promise<void> {
+  await getPool().query("update users set language = $2 where id = $1", [userId, language]);
 }
 
 export async function findUserByTelegramId(telegramId: number | string): Promise<UserRow | null> {
