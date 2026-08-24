@@ -132,7 +132,7 @@ export function registerAdminRoutes(
     if (
       target.role === "owner" &&
       body.data.role === "barber" &&
-      (await countOtherActiveOwners(target.id)) === 0
+      (await countOtherActiveOwners(target.id, req.user.shop_id!)) === 0
     ) {
       return reply.code(409).send({ error: "last owner", reason: "last_owner" });
     }
@@ -173,7 +173,7 @@ export function registerAdminRoutes(
         // can't approve anyone, which would strand the shop.
         if (
           ["owner", "superadmin"].includes(target.role) &&
-          (await countOtherActiveOwners(target.id)) === 0
+          (await countOtherActiveOwners(target.id, shopId)) === 0
         ) {
           return reply.code(409).send({ error: "last owner", reason: "last_owner" });
         }

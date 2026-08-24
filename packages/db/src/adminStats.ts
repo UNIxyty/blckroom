@@ -84,12 +84,20 @@ export async function listAudit(shopId: string, limit = 60): Promise<AuditRow[]>
   return rows;
 }
 
-/** Active owner-level accounts other than `excludeUserId` (superadmin counts). */
-export async function countOtherActiveOwners(excludeUserId: string): Promise<number> {
+/**
+ * Active owner-level accounts in the shop other than `excludeUserId`
+ * (superadmin counts). Shop-scoped: another shop's owner can't be the reason
+ * this shop is considered covered.
+ */
+export async function countOtherActiveOwners(
+  excludeUserId: string,
+  shopId: string,
+): Promise<number> {
   const { rows } = await getPool().query<{ n: string }>(
     `select count(*) as n from users
-     where role in ('owner', 'superadmin') and status = 'active' and id <> $1`,
-    [excludeUserId],
+     where role in ('owner', 'superadmin') and status = 'active'
+       and id <> $1 and shop_id = $2`,
+    [excludeUserId, shopId],
   );
   return Number(rows[0]!.n);
 }
