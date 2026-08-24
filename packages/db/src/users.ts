@@ -76,6 +76,17 @@ export async function rejectUser(userId: string, rejectedBy: string): Promise<Us
   return rows[0] ?? null;
 }
 
+export async function setUserRole(
+  userId: string,
+  role: "barber" | "owner",
+): Promise<UserRow | null> {
+  const { rows } = await getPool().query<UserRow>(
+    `update users set role = $2 where id = $1 and role in ('barber', 'owner') returning *`,
+    [userId, role],
+  );
+  return rows[0] ?? null;
+}
+
 export async function setUserStatus(
   userId: string,
   status: "active" | "suspended",

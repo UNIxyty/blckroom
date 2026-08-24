@@ -11,11 +11,14 @@ export interface HaircutRow {
   duration_minutes: number;
   sort_order: number;
   is_active: boolean;
+  deleted_at: Date | null;
 }
 
 export async function listActiveHaircuts(shopId: string): Promise<HaircutRow[]> {
   const { rows } = await getPool().query<HaircutRow>(
-    "select * from haircuts where shop_id = $1 and is_active order by sort_order",
+    `select * from haircuts
+     where shop_id = $1 and is_active and deleted_at is null
+     order by sort_order`,
     [shopId],
   );
   return rows;
@@ -23,10 +26,41 @@ export async function listActiveHaircuts(shopId: string): Promise<HaircutRow[]> 
 
 export async function listAllHaircuts(shopId: string): Promise<HaircutRow[]> {
   const { rows } = await getPool().query<HaircutRow>(
-    "select * from haircuts where shop_id = $1 order by sort_order",
+    "select * from haircuts where shop_id = $1 and deleted_at is null order by sort_order",
     [shopId],
   );
   return rows;
+}
+
+export async function countActiveHaircuts(shopId: string): Promise<number> {
+  const { rows } = await getPool().query<{ n: string }>(
+    "select count(*) as n from haircuts where shop_id = $1 and is_active and deleted_at is null",
+    [shopId],
+  );
+  return Number(rows[0]!.n);
+}
+
+/** Name uniqueness among the shop's non-deleted cuts (case-insensitive). */
+export async function haircutNameTaken(
+  shopId: string,
+  name: string,
+  excludeId?: string,
+): Promise<boolean> {
+  const { rows } = await getPool().query<{ n: string }>(
+    `select count(*) as n from haircuts
+     where shop_id = $1 and deleted_at is null and lower(name_en) = lower($2)
+       and ($3::uuid is null or id <> $3)`,
+    [shopId, name, excludeId ?? null],
+  );
+  return Number(rows[0]!.n) > 0;
+}
+
+/** Soft delete: past sessions keep their generations; new sessions skip it. */
+export async function softDeleteHaircut(id: string): Promise<void> {
+  await getPool().query(
+    "update haircuts set deleted_at = now(), is_active = false where id = $1",
+    [id],
+  );
 }
 
 export async function getHaircut(id: string): Promise<HaircutRow | null> {
