@@ -5,6 +5,7 @@ export {
   renderGridSheet,
   closeBrowser,
   TEMPLATE_SIZES,
+  EMPTY_SLOT_IMAGE,
   type TemplateName,
   type CardTokens,
   type SheetTokens,

@@ -1,4 +1,3 @@
-import QRCode from "qrcode";
 import type { AppConfig } from "@blackroom/shared/config";
 import type { Storage } from "@blackroom/shared/storage";
 import {
@@ -6,21 +5,22 @@ import {
   getShop,
   findUserById,
   listSessionGenerations,
+  allGenerationsSettled,
   setSessionStatus,
   enqueueJob,
   getPool,
 } from "@blackroom/db";
-import { renderGridSheet, type SheetTokens } from "@blackroom/renderer";
-import { failedTileDataUri, formatDate, formatDuration, formatPrice } from "../format.js";
+import { renderGridSheet } from "@blackroom/renderer";
+import { cutDisplayName, failedTileDataUri, formatDate } from "../format.js";
 
 export interface ComposeSheetPayload {
   session_id: string;
 }
 
 /**
- * All nine generations settled → render the 3×3 sheet with a QR to the
- * short share URL (which redirects to a fresh signed, expiring Storage URL),
- * upload it, then enqueue delivery.
+ * Renders the sheet once every generation has reached a terminal state.
+ * Failed cuts render as an explicit FAILED tile, never a gap; fewer than
+ * nine active cuts leave the remaining slots empty (stripe backdrop).
  */
 export async function runComposeSheetJob(
   config: AppConfig,
@@ -29,6 +29,11 @@ export async function runComposeSheetJob(
 ): Promise<void> {
   const session = await getSession(payload.session_id);
   if (!session || session.status === "expired") return;
+
+  // Hard guard against ever assembling early — settle() should only enqueue
+  // when true, but a retry could have re-opened a generation since.
+  if (!(await allGenerationsSettled(session.id))) return;
+
   const shop = await getShop(session.shop_id);
   const barber = await findUserById(session.barber_id);
   if (!shop || !barber) throw new Error("session refs missing");
@@ -44,29 +49,16 @@ export async function runComposeSheetJob(
 
   const slots = await Promise.all(
     generations.slice(0, 9).map(async (g) => ({
-      cut_name: g.name_en,
-      price: formatPrice(g.price_cents, shop.currency),
-      duration: formatDuration(g.duration_minutes),
+      cut_name: cutDisplayName(g, barber.language),
       image_url:
         g.status === "done" && g.raw_image_path
           ? await storage.createSignedUrl(g.raw_image_path, 300)
           : failedTileDataUri(),
     })),
   );
-  while (slots.length < 9) {
-    slots.push({ cut_name: "—", price: "", duration: "", image_url: failedTileDataUri() });
-  }
-
-  const shareUrl = `${config.PUBLIC_APP_URL}/s/${session.id}`;
-  const qr = await QRCode.toDataURL(shareUrl, {
-    margin: 2,
-    width: 400,
-    color: { dark: "#F2F3F1", light: "#101312" },
-  });
 
   const sheetPng = await renderGridSheet({
-    slots: slots as SheetTokens["slots"],
-    qr_image: qr,
+    slots,
     barber_name: barber.first_name ?? barber.username ?? "Black Room",
     date: formatDate(session.created_at, shop.timezone),
   });

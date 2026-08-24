@@ -1,16 +1,3 @@
-const CURRENCY_SYMBOLS: Record<string, string> = { EUR: "€", USD: "$", GBP: "£" };
-
-export function formatPrice(cents: number, currency: string): string {
-  const symbol = CURRENCY_SYMBOLS[currency] ?? currency;
-  const whole = cents / 100;
-  const text = Number.isInteger(whole) ? String(whole) : whole.toFixed(2);
-  return `${symbol} ${text}`;
-}
-
-export function formatDuration(minutes: number): string {
-  return `${minutes} min`;
-}
-
 export function formatDate(date: Date, timezone: string): string {
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
@@ -20,13 +7,20 @@ export function formatDate(date: Date, timezone: string): string {
   }).format(date);
 }
 
+/** Cut name on rendered frames: RU name when the barber works in Russian. */
+export function cutDisplayName(
+  cut: { name_en: string; name_ru: string | null },
+  barberLanguage: string | null | undefined,
+): string {
+  return barberLanguage === "ru" && cut.name_ru ? cut.name_ru : cut.name_en;
+}
+
 /** Dark placeholder tile for a failed generation slot (data URI, CSS-url safe). */
-export function failedTileDataUri(): string {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="420" height="420">
-  <rect width="420" height="420" fill="#101312"/>
-  <line x1="0" y1="0" x2="420" y2="420" stroke="#1A1E1D" stroke-width="1"/>
-  <line x1="420" y1="0" x2="0" y2="420" stroke="#1A1E1D" stroke-width="1"/>
-  <text x="210" y="216" text-anchor="middle" font-family="monospace" font-size="15" letter-spacing="4" fill="#4A5150">UNAVAILABLE</text>
+export function failedTileDataUri(label = "FAILED"): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="460" height="460">
+  <rect width="460" height="460" fill="#0E1110"/>
+  <rect x="6" y="6" width="448" height="448" fill="none" stroke="#3A403E" stroke-width="2" stroke-dasharray="10 8"/>
+  <text x="230" y="238" text-anchor="middle" font-family="monospace" font-size="17" letter-spacing="5" fill="#6E7573">${label}</text>
 </svg>`;
   const encoded = encodeURIComponent(svg).replace(
     /[()']/g,

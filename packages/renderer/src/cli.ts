@@ -1,12 +1,10 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import QRCode from "qrcode";
 import {
   renderTemplate,
   renderSingleCutCard,
   renderGridSheet,
   closeBrowser,
-  type SheetTokens,
 } from "./render.js";
 import { fixtureCuts, fixtureMeta } from "./fixtures.js";
 
@@ -15,19 +13,11 @@ const outDir = join(process.cwd(), "out");
 async function main(): Promise<void> {
   await mkdir(outDir, { recursive: true });
 
-  const qr = await QRCode.toDataURL(fixtureMeta.sheet_url, {
-    margin: 2,
-    width: 400,
-    color: { dark: "#F2F3F1", light: "#101312" },
-  });
-
   const first = fixtureCuts[0]!;
 
   console.log("rendering single-cut-card…");
   const card = await renderSingleCutCard({
     cut_name: first.name,
-    price: first.price,
-    duration: first.duration,
     barber_name: fixtureMeta.barber_name,
     date: fixtureMeta.date,
     image_url: first.image_url,
@@ -44,13 +34,7 @@ async function main(): Promise<void> {
 
   console.log("rendering grid-sheet…");
   const sheet = await renderGridSheet({
-    slots: fixtureCuts.map((c) => ({
-      cut_name: c.name,
-      price: c.price,
-      duration: c.duration,
-      image_url: c.image_url,
-    })) as SheetTokens["slots"],
-    qr_image: qr,
+    slots: fixtureCuts.map((c) => ({ cut_name: c.name, image_url: c.image_url })),
     barber_name: fixtureMeta.barber_name,
     date: fixtureMeta.date,
   });

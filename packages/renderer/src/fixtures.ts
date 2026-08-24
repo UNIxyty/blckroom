@@ -29,32 +29,27 @@ function placeholderPortrait(seed: number): string {
 
 export interface FixtureCut {
   name: string;
-  price: string;
-  duration: string;
   image_url: string;
 }
 
-const CUTS: Array<[string, string, string]> = [
-  ["Buzz Cut", "€ 20", "30 min"],
-  ["Crew Cut", "€ 25", "40 min"],
-  ["French Crop", "€ 25", "45 min"],
-  ["Mid Fade", "€ 30", "50 min"],
-  ["Skin Fade", "€ 28", "45 min"],
-  ["Undercut", "€ 28", "45 min"],
-  ["Pompadour", "€ 32", "55 min"],
-  ["Quiff", "€ 30", "50 min"],
-  ["Slick Back", "€ 28", "45 min"],
+const CUTS = [
+  "Buzz Cut",
+  "Crew Cut",
+  "French Crop",
+  "Mid Fade",
+  "Skin Fade",
+  "Undercut",
+  "Pompadour",
+  "Quiff",
+  "Slick Back",
 ];
 
-export const fixtureCuts: FixtureCut[] = CUTS.map(([name, price, duration], i) => ({
+export const fixtureCuts: FixtureCut[] = CUTS.map((name, i) => ({
   name,
-  price,
-  duration,
   image_url: placeholderPortrait(i + 1),
 }));
 
 export const fixtureMeta = {
   barber_name: "Andrejs",
   date: "24 Aug 2026",
-  sheet_url: "https://blackroom.example/s/9f2c1a",
 };

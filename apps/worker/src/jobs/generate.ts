@@ -17,7 +17,7 @@ import {
 import { renderSingleCutCard } from "@blackroom/renderer";
 import { generateHaircutImage } from "../gemini.js";
 import { updateProgress } from "../progress.js";
-import { formatDate, formatDuration, formatPrice } from "../format.js";
+import { cutDisplayName, formatDate } from "../format.js";
 
 export interface GeneratePayload {
   generation_id: string;
@@ -69,9 +69,7 @@ export async function runGenerateJob(
   // Composite the branded frame around the raw image.
   const rawUrl = await storage.createSignedUrl(rawPath, 120);
   const framedPng = await renderSingleCutCard({
-    cut_name: generation.name_en,
-    price: formatPrice(generation.price_cents, shop.currency),
-    duration: formatDuration(generation.duration_minutes),
+    cut_name: cutDisplayName(generation, barber.language),
     barber_name: barber.first_name ?? barber.username ?? "Black Room",
     date: formatDate(session.created_at, shop.timezone),
     image_url: rawUrl,

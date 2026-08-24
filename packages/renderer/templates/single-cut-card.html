@@ -16,22 +16,19 @@
   .inset{position:absolute;inset:20px;border:1px solid #232927;}
   .pad{position:absolute;inset:0;padding:0 28px;box-sizing:border-box;display:flex;flex-direction:column;}
 
-  .topbar{height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;box-sizing:border-box;}
+  .topbar{height:70px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;box-sizing:border-box;}
   .mark{font-family:'Cormorant Garamond',Georgia,serif;font-weight:300;font-size:19px;letter-spacing:.42em;text-transform:uppercase;color:#F2F3F1;}
   .meta-top{font-size:13px;letter-spacing:.24em;text-transform:uppercase;color:#6E7573;}
 
-  .slot{width:1024px;height:1024px;flex:0 0 1024px;position:relative;background:#101312;overflow:hidden;}
+  .slot{width:1024px;height:1130px;flex:0 0 1130px;position:relative;background:#101312;overflow:hidden;}
   .slot .img{position:absolute;inset:0;background-image:url('{{image_url}}');background-size:cover;background-position:center;}
   .slot .stripe{position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,#0E1110 0 8px,#131716 8px 16px);}
   .slot .tok{position:absolute;left:0;right:0;bottom:24px;text-align:center;font-family:ui-monospace,'SFMono-Regular',Menlo,monospace;font-size:13px;letter-spacing:.12em;color:#4A5150;}
 
-  .info{flex:1;display:flex;flex-direction:column;justify-content:flex-start;padding:30px 20px 0;box-sizing:border-box;}
-  .cut{font-family:'Cormorant Garamond',Georgia,serif;font-weight:300;font-size:56px;line-height:1;letter-spacing:.14em;text-transform:uppercase;margin:0;}
-  .row{display:flex;justify-content:space-between;align-items:baseline;margin-top:16px;}
-  .dur{font-size:15px;letter-spacing:.26em;text-transform:uppercase;color:#A8AEAB;}
-  .price{font-size:22px;font-weight:500;letter-spacing:.16em;color:#F2F3F1;}
-  .rule{height:1px;background:#232927;margin-top:20px;}
-  .foot{margin-top:20px;display:flex;justify-content:center;}
+  .info{flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 20px;box-sizing:border-box;}
+  .cut{font-family:'Cormorant Garamond',Georgia,serif;font-weight:300;font-size:52px;line-height:1;letter-spacing:.16em;text-transform:uppercase;text-indent:.16em;text-align:center;margin:0;}
+  .rule{height:1px;background:#232927;margin-top:22px;}
+  .foot{margin-top:22px;display:flex;justify-content:center;}
 </style>
 </head>
 <body>
@@ -51,10 +48,6 @@
 
     <div class="info">
       <h1 class="cut">{{cut_name}}</h1>
-      <div class="row">
-        <div class="dur">{{duration}}</div>
-        <div class="price">{{price}}</div>
-      </div>
       <div class="rule"></div>
       <div class="foot">
         <svg width="56" height="56" viewBox="0 0 100 100" aria-label="BR emblem">

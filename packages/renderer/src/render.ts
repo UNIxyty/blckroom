@@ -99,8 +99,6 @@ export async function renderTemplate(
 
 export interface CardTokens {
   cut_name: string;
-  price: string;
-  duration: string;
   barber_name: string;
   date: string;
   image_url: string;
@@ -112,33 +110,29 @@ export async function renderSingleCutCard(tokens: CardTokens): Promise<Buffer> {
 
 export interface SheetSlot {
   cut_name: string;
-  price: string;
-  duration: string;
   image_url: string;
 }
 
+/** 1×1 transparent PNG — unfilled slots show the template's stripe backdrop. */
+export const EMPTY_SLOT_IMAGE =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+
 export interface SheetTokens {
-  slots: [
-    SheetSlot, SheetSlot, SheetSlot,
-    SheetSlot, SheetSlot, SheetSlot,
-    SheetSlot, SheetSlot, SheetSlot,
-  ];
-  qr_image: string;
+  /** Up to 9 slots, template order left→right, top→bottom. Missing slots render empty. */
+  slots: SheetSlot[];
   barber_name: string;
   date: string;
 }
 
 export async function renderGridSheet(tokens: SheetTokens): Promise<Buffer> {
   const flat: Record<string, string> = {
-    qr_image: tokens.qr_image,
     barber_name: tokens.barber_name,
     date: tokens.date,
   };
-  tokens.slots.forEach((slot, i) => {
-    flat[`cut_name_${i + 1}`] = slot.cut_name;
-    flat[`price_${i + 1}`] = slot.price;
-    flat[`duration_${i + 1}`] = slot.duration;
-    flat[`image_url_${i + 1}`] = slot.image_url;
-  });
+  for (let i = 0; i < 9; i++) {
+    const slot = tokens.slots[i];
+    flat[`cut_name_${i + 1}`] = slot?.cut_name ?? "";
+    flat[`image_url_${i + 1}`] = slot?.image_url ?? EMPTY_SLOT_IMAGE;
+  }
   return renderTemplate("grid-sheet", flat);
 }
